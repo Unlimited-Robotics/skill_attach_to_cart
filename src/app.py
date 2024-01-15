@@ -18,14 +18,14 @@ class RayaApplication(RayaApplicationBase):
         try:
             await self.skill_att2cart.execute_setup(
                     setup_args={
-                            'identifier': self.identifier,
                             'tags_size': self.tags_size,
                         },
                 )
         except RayaSkillAborted as error:
-            error_code = error[0]
-            error_msg = error[1]
-            self.log.error(f'error code: {error_code}, error: {error_msg}')
+            print (f'error: {error},type: {type(error)}')
+            # error_code = error[0]
+            # error_msg = error[1]
+            # self.log.error(f'error code: {error_code}, error: {error_msg}')
 
 
     # async def cb_skill_done(self, exception, result):
@@ -38,23 +38,18 @@ class RayaApplication(RayaApplicationBase):
     #                 f'{type(exception)} {exception}'
     #             )
 
-
-    async def cb_skill_feedback(self, feedback):
-        
-        self.log.info(feedback)
-
-
     async def main(self):
         try:
-            await self.skill_att2cart.execute_main()
+            await self.skill_att2cart.execute_main(
+                execute_args={
+                    'identifier': self.identifier,
+                    'pre_att_angle':self.pre_att_angle,
+                }
+            )
         except RayaSkillAborted as error:
             self.skill_aborted = True
             self.log.error(f'error code: {error.error_code}, error: {error.error_msg}')
             self.log.warn('cart NOT connected')
-
-        
-
-
 
 
     async def finish(self):
@@ -63,12 +58,17 @@ class RayaApplication(RayaApplicationBase):
 
         self.log.info(f'RayaApplication.finish')
 
+
     def get_arguments(self):
-        
         self.tags_size = self.get_argument('-s', '--tag-size',
                 type=float,
                 help='size of tags to be detected',
                 required=True
+            )
+        self.pre_att_angle = self.get_argument('-ra', '--rotation-angle',
+                type=float,
+                help='pre attach rotation angle',
+                required=False
             )
         self.identifier = self.get_argument('-i', '--identifier', 
                 type= int,
@@ -76,4 +76,9 @@ class RayaApplication(RayaApplicationBase):
                 required=True,
                 default='',
                 help='ids of the apriltags to be used'
-            )  
+            )
+
+    ### callbacks
+
+    async def cb_skill_feedback(self, feedback):
+        self.log.info(feedback)
