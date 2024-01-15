@@ -1,1 +1,4 @@
-/skills/approach_to_tags/
+/skills/*
+
+!/skills/attach_to_cart/
+!/skills/__init__.py
