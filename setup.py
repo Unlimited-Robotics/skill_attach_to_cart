@@ -15,6 +15,15 @@ with open('manifest.json', 'r',  encoding='utf-8') as file:
     AUTOR_NAME= data.get('name','Unlimited Robotics')
     AUTOR_EMAIL= data.get('email','camilo@unlimited-robotics.com')
     URL= data['repository']['url']
+    
+    deps = data.get('dependencies', [])
+    skills = deps.get('skills', [])
+    SKILLS = []
+    for skill in skills:
+        name = skill.get('name', '')
+        version = skill.get('version', '')
+        SKILLS.append(f'{name} {version}')
+        
 
 setup(
     name=SKILL_NAME,
@@ -31,7 +40,5 @@ setup(
     python_requires=">=3.8",
     download_url='',
     keywords=['skills', 'unlimited-robotics', 'gary'],
-    install_requires=[
-        'approach_to_tags >= 1.0.1'
-    ]
+    install_requires=SKILLS
 )
