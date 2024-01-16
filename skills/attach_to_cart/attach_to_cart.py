@@ -3,8 +3,6 @@ from raya.controllers import MotionController
 from raya.application_base import RayaApplicationBase
 import asyncio
 from .constants import *
-from raya.controllers.navigation_controller import POSITION_UNIT, ANGLE_UNIT
-
 import math
 import time
 
@@ -12,18 +10,17 @@ import time
 
 class SkillAttachToCart(RayaSkill):
 
-
     DEFAULT_SETUP_ARGS = {
             # 'distance_before_attach': 0.5,
             # 'distance_first_approach':1.0,
             # 'max_angle_step': 15.0
         'timeout' : FULL_APP_TIMEOUT,
+        '180_rotating': DEFUALT_ROTATING_180
             }
     REQUIRED_SETUP_ARGS = {
-        'actual_desired_position'
+        'actual_desired_position' 
     }
     
-
     async def calculate_distance_parameters(self):
         ## calculate the distance of each dl and dr (distances) and calculate the angle of oreitattion related to the normal to the cart
         if (self.dl > self.dr):
@@ -103,8 +100,7 @@ class SkillAttachToCart(RayaSkill):
         self.log.info("finish rotate")
 
     async def gripper_state_classifier(self):
-        ### TODO add position value check
-        # Check if the position (0 or 1) and pressure were reached
+
         if (self.gripper_state['pressure_reached'] == True and \
             self.gripper_state['position_reached'] == False):
 
@@ -246,7 +242,6 @@ class SkillAttachToCart(RayaSkill):
 
 
     async def move_backwared(self):
-        ### TODO try axcept
         kp = VELOCITY_KP
         cmd_velocity = kp*self.average_distance
         self.log.info(f'cmd_velocity {cmd_velocity}')
@@ -302,8 +297,9 @@ class SkillAttachToCart(RayaSkill):
                 f'gripper open to pre-grab position failed, Exception type: '
                 f'{type(error)}, Exception: {error}')
             self.abort(*ERROR_GRIPPER_FAILED)
-        
-        # await self.rotation_180()
+
+        if self.rotating_180:
+            await self.rotation_180()
         await self.read_srf_values()
         await self.calculate_distance_parameters()
         await self._cart_max_distance_verification()
@@ -316,8 +312,6 @@ class SkillAttachToCart(RayaSkill):
 
     async def rotation_180(self):
         self.log.info('Rotating 180 degree')
-
-
         try:
             await self.motion.rotate(
                 angle = 180.0,
@@ -387,6 +381,7 @@ class SkillAttachToCart(RayaSkill):
         self.dl = 0
         self.dr = 0
         self.pushing_index = 0
+        self.rotating_180 = self.setup_args['180_rotating']
         self.timeout = self.setup_args['timeout']
         self.gripper_state = {'final_position': 0.0,
                             'final_pressure': 0.0,
@@ -399,18 +394,13 @@ class SkillAttachToCart(RayaSkill):
                             'close_to_actual_position' : False}
 
     async def setup(self):
-        self.skill_apr2tags:RayaSkillHandler = \
-                self.register_skill(SkillApproachToTags)
-
         self.arms = await self.enable_controller('arms')
         self.sensors = await self.enable_controller('sensors')
         self.motion = await self.enable_controller('motion')
-        # self.max_angle_step = self.setup_args['max_angle_step']
         
 
 
     async def main(self):
-        ### approach state
 
         self.log.info('SkillAttachToCart.main')
 
@@ -418,7 +408,6 @@ class SkillAttachToCart(RayaSkill):
         self.timer = self.start_time
 
         await self.pre_loop_actions()
-
 
         while (True):
 
