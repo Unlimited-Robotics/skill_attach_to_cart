@@ -303,8 +303,7 @@ class SkillAttachToCart(RayaSkill):
                 f'{type(error)}, Exception: {error}')
             self.abort(*ERROR_GRIPPER_FAILED)
         
-        ### rotate 180 degree
-        await self.rotation_180()
+        # await self.rotation_180()
         await self.read_srf_values()
         await self.calculate_distance_parameters()
         await self._cart_max_distance_verification()
