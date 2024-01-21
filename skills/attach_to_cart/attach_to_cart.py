@@ -143,7 +143,6 @@ class SkillAttachToCart(RayaSkill):
             await asyncio.sleep(0.2)
 
             if dl < VERIFICATION_DISTANCE or dr < VERIFICATION_DISTANCE:
-                self.log.info('finish cart attach verification')
                 self.gripper_state['cart_attached'] = True
             else:
                 self.gripper_state['cart_attached'] = False
@@ -208,6 +207,11 @@ class SkillAttachToCart(RayaSkill):
                 if cart_attached:
                     self.state = 'attach_verification'
                     break
+
+                if self.gripper_state['position_reached'] == True:
+                    self.log.error(f'fail, cart gripper not attached')
+                    self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+
                 self.gripper_state['attempts']+=1
                 if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION:
                    await self.vibrate()
@@ -397,6 +401,7 @@ class SkillAttachToCart(RayaSkill):
         self.arms = await self.enable_controller('arms')
         self.sensors = await self.enable_controller('sensors')
         self.motion = await self.enable_controller('motion')
+        self.ui = await self.enable_controller('ui')
         
 
 
@@ -440,7 +445,7 @@ class SkillAttachToCart(RayaSkill):
 
             elif self.state == 'finish':
                 cart_attached = self.gripper_state['cart_attached']
-                self.log.info(f'time to execute: {self.timer}')
+                self.log.info(f'cart attachment status is: {cart_attached} time to execute: {self.timer}')
                 await self.send_feedback('application finished, cart attachment is: '\
                               f'{cart_attached}')
                 
