@@ -9,12 +9,9 @@ class RayaApplication(RayaApplicationBase):
         ## First function, setup the application
         self.log.info(f'RayaApplication.setup')
 
-        self.log.info(f'Shit')
-
         self.skill_att2cart = self.register_skill(SkillAttachToCart)
         await self.skill_att2cart.execute_setup({
 
-            'actual_desired_position': 0.21,
         })
         
     async def cb_skill_done(self, exception, result):
