@@ -122,12 +122,13 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
 
     async def obstacle_detection(self):
-        if abs(self.last_middle_srf / self.middle_srf) > 1.5:
-        # if self.middle_srf < OBSTACLE_DISTANCE_PARAMETER * self.average_distance:
+        ### function detects if an object entered between gary and the cart
+        ### and if the object disapeared. function raises flag accordinly
+        if abs(self.last_middle_srf / self.middle_srf) > OBSTACLE_DETECTED_RATIO:
             self.log.debug(f'obstacle_detected: {self.obstacle_detected}, ratio: {self.last_middle_srf / self.middle_srf}')
             self.obstacle_detected = True
         elif self.obstacle_detected:
-            if abs(self.last_middle_srf / self.middle_srf) < 0.6:
+            if abs(self.last_middle_srf / self.middle_srf) < NON_OBSTACLE_DETECTED_RATIO:
                 self.log.debug(f'obstacle_detected: {self.obstacle_detected}, ratio: {self.last_middle_srf / self.middle_srf}')
                 self.obstacle_detected = False
 
@@ -141,9 +142,9 @@ class SkillAttachToCart(RayaSkill):
         is_moving = self.motion.is_moving()
         if (is_moving):
             await self.motion.cancel_motion()
-            if REVERSE_BEEPING_ALERT:
-                if not self.sound.is_playing():
-                        await self.play_predefined_sound('beep', leds = False, wait = False)
+            # if REVERSE_BEEPING_ALERT:
+                # if not self.sound.is_playing():
+                #         await self.play_predefined_sound('beep', leds = False, wait = False)
       
         self.obstacle_index = self.obstacle_index + 1
         self.log.error(f'stop moving, obstacle detected {self.middle_srf} cm from gary, index: {self.obstacle_index}')
@@ -156,6 +157,7 @@ class SkillAttachToCart(RayaSkill):
 
 
     async def vibrate(self):
+            ### function move gary to help the gripper to close all the way
             try:
                 await self.motion.set_velocity(
                         x_velocity = VERIFICATION_VELOCITY,
@@ -231,7 +233,12 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
             
     async def read_srf_values(self):
+        start_time = time.time()
         while(True):
+            timer = time.time() - start_time
+            if timer > 2.0:
+                self.log.error(f'failed to read SRF values for {timer} sec')
+                self.abort(*ERROR_SRF_READING_FAILED)
             await asyncio.sleep(0.01)
             self.middle_srf = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_MIDDLE] * 100 
             srf_right = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT] * 100 
@@ -534,7 +541,8 @@ class SkillAttachToCart(RayaSkill):
             if self.state == 'moving':
                 if REVERSE_BEEPING_ALERT:
                     if not self.sound.is_playing():
-                        await self.play_predefined_sound('beep', leds = False, wait = False)
+                        pass
+                        # await self.play_predefined_sound('beep', leds = False, wait = False)
                 await self.move_backwared()
             
             elif self.state == 'attaching':
@@ -543,27 +551,27 @@ class SkillAttachToCart(RayaSkill):
             elif (self.state == 'rotating'):
                 if REVERSE_BEEPING_ALERT:
                     if not self.sound.is_playing():
-                        await self.play_predefined_sound('beep', leds = False, wait = False)
+                        pass
+                        # await self.play_predefined_sound('beep', leds = False, wait = False)
                 await self.adjust_angle()
 
             elif self.state == 'attach_verification':
                 await self.cart_attachment_verification()
 
             elif self.state == 'finish':
-                cart_attached = self.gripper_state['cart_attached']
-                self.log.info(f'cart attachment status is: {cart_attached}, time to execute: {self.timer}')
-                await self.send_feedback('application finished, cart attachment is: '\
-                              f'{cart_attached}')
-                if self.gripper_state['cart_attached'] is False:
-                    self.abort(*ERROR_CART_NOT_ATTACHED)
                 await self.finish()
                 
                 break
 
-
             await asyncio.sleep(0.2)
 
     async def finish(self):
+        cart_attached = self.gripper_state['cart_attached']
+        self.log.info(f'cart attachment status is: {cart_attached}, time to execute: {self.timer}')
+        await self.send_feedback('application finished, cart attachment is: '\
+                    f'{cart_attached}')
+        # if self.gripper_state['cart_attached'] is False:
+        #     self.abort(*ERROR_CART_NOT_ATTACHED)
         self.log.info('SkillAttachToCart.finish')
         # await self.skill_apr2cart.execute_finish()
     
