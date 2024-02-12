@@ -142,9 +142,9 @@ class SkillAttachToCart(RayaSkill):
         is_moving = self.motion.is_moving()
         if (is_moving):
             await self.motion.cancel_motion()
-            # if REVERSE_BEEPING_ALERT:
-                # if not self.sound.is_playing():
-                #         await self.play_predefined_sound('beep', leds = False, wait = False)
+            if REVERSE_BEEPING_ALERT:
+                if not self.sound.is_playing():
+                        await self.play_predefined_sound('beep', leds = False, wait = False)
       
         self.obstacle_index = self.obstacle_index + 1
         self.log.error(f'stop moving, obstacle detected {self.middle_srf} cm from gary, index: {self.obstacle_index}')
@@ -267,7 +267,7 @@ class SkillAttachToCart(RayaSkill):
         
         self.delta = self.dl - self.dr
         self.angle  = math.atan2(self.delta,DISTANCE_BETWEEN_SRF_SENSORS)/math.pi * 180
-        self.log.info(f'left:{self.dl}, right:{self.dr}, angle: {self.angle}')
+        self.log.info(f'left:{self.dl}, right:{self.dr}, middle: {self.middle_srf} angle: {self.angle}')
 
 ###############################################################################
 ###############################################################################
@@ -541,8 +541,7 @@ class SkillAttachToCart(RayaSkill):
             if self.state == 'moving':
                 if REVERSE_BEEPING_ALERT:
                     if not self.sound.is_playing():
-                        pass
-                        # await self.play_predefined_sound('beep', leds = False, wait = False)
+                        await self.play_predefined_sound('beep', leds = False, wait = False)
                 await self.move_backwared()
             
             elif self.state == 'attaching':
@@ -551,8 +550,7 @@ class SkillAttachToCart(RayaSkill):
             elif (self.state == 'rotating'):
                 if REVERSE_BEEPING_ALERT:
                     if not self.sound.is_playing():
-                        pass
-                        # await self.play_predefined_sound('beep', leds = False, wait = False)
+                        await self.play_predefined_sound('beep', leds = False, wait = False)
                 await self.adjust_angle()
 
             elif self.state == 'attach_verification':
