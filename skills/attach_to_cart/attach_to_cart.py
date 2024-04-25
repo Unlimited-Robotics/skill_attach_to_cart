@@ -17,7 +17,8 @@ class SkillAttachToCart(RayaSkill):
         'timeout' : FULL_APP_TIMEOUT,
         '180_rotating': DEFUALT_ROTATING_180,
         'actual_desired_position': GRIPPER_ACTUAL_DESIRED_POSITION,
-        'reverse_beeping_alert': REVERSE_BEEPING_ALERT
+        'reverse_beeping_alert': REVERSE_BEEPING_ALERT,
+        'close_pressure': GRIPPER_CLOSE_PRESSURE_CONST,
             }
     REQUIRED_SETUP_ARGS = {
          
@@ -124,13 +125,16 @@ class SkillAttachToCart(RayaSkill):
     async def obstacle_detection(self):
         ### function detects if an object entered between gary and the cart
         ### and if the object disapeared. function raises flag accordinly
-        if abs(self.last_middle_srf / self.middle_srf) > OBSTACLE_DETECTED_RATIO:
-            self.log.debug(f'obstacle_detected: {self.obstacle_detected}, ratio: {self.last_middle_srf / self.middle_srf}')
-            self.obstacle_detected = True
-        elif self.obstacle_detected:
-            if abs(self.last_middle_srf / self.middle_srf) < NON_OBSTACLE_DETECTED_RATIO:
+        try:
+            if abs(self.last_middle_srf / self.middle_srf) > OBSTACLE_DETECTED_RATIO:
                 self.log.debug(f'obstacle_detected: {self.obstacle_detected}, ratio: {self.last_middle_srf / self.middle_srf}')
-                self.obstacle_detected = False
+                self.obstacle_detected = True
+            elif self.obstacle_detected:
+                if abs(self.last_middle_srf / self.middle_srf) < NON_OBSTACLE_DETECTED_RATIO:
+                    self.log.debug(f'obstacle_detected: {self.obstacle_detected}, ratio: {self.last_middle_srf / self.middle_srf}')
+                    self.obstacle_detected = False
+        except Exception as error:
+                self.log.warn(f'middle SRF not in use, obstacle_detection failed, error: {error}')
 
         self.last_middle_srf = self.middle_srf
 
@@ -324,7 +328,7 @@ class SkillAttachToCart(RayaSkill):
                                                 'gripper':'cart',
                                                 'goal':GRIPPER_CLOSE_POSITION,
                                                 'velocity':GRIPPER_VELOCITY,
-                                                'pressure':GRIPPER_CLOSE_PRESSURE_CONST,
+                                                'pressure':self.close_pressure,
                                                 'timeout':GRIPPER_TIMEOUT
                                             }, 
                                         wait=True,
@@ -484,6 +488,7 @@ class SkillAttachToCart(RayaSkill):
         self.last_middle_srf = 0
         self.last_average_distance = 0.0
         self.rotating_180 = self.setup_args['180_rotating']
+        self.close_pressure = self.setup_args['close_pressure']
         self.timeout = self.setup_args['timeout']
         if self.rotating_180:
             self.timeout = self.timeout + TIMEOUT_180
@@ -566,8 +571,7 @@ class SkillAttachToCart(RayaSkill):
     async def finish(self):
         cart_attached = self.gripper_state['cart_attached']
         self.log.info(f'cart attachment status is: {cart_attached}, time to execute: {self.timer}')
-        await self.send_feedback('application finished, cart attachment is: '\
-                    f'{cart_attached}')
+        await self.send_feedback(cart_attached)
         # if self.gripper_state['cart_attached'] is False:
         #     self.abort(*ERROR_CART_NOT_ATTACHED)
         self.log.info('SkillAttachToCart.finish')
