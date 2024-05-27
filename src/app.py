@@ -10,7 +10,7 @@ class RayaApplication(RayaApplicationBase):
         self.log.info(f'RayaApplication.setup')
 
         self.skill_att2cart = self.register_skill(SkillAttachToCart)
-        await self.skill_att2cart.execute_setup({
+        await self.skill_att2cart.execute_setup({'reverse_beeping_alert': True,
 
         })
         

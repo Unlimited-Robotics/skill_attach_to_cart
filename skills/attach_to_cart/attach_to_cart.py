@@ -1,12 +1,17 @@
+import os
+import shutil
 from raya.skills import RayaSkill, RayaSkillHandler
 from raya.controllers import MotionController
 from raya.application_base import RayaApplicationBase
 import asyncio
+
+from raya.enumerations import LEDS_EXECUTION_CONTROL
+
 from .constants import *
 import math
 import time
 import eyed3
-from raya.tools.filesystem import resolve_path, create_dat_folder
+from raya.tools.filesystem import resolve_path, create_dat_folder, check_file_exists
 
 
 
@@ -103,6 +108,7 @@ class SkillAttachToCart(RayaSkill):
         self.gripper_state['pressure_reached'] = gripper_result['pressure_reached']
         self.gripper_state['success'] = gripper_result['success']
         self.gripper_state['timeout_reached'] = gripper_result['timeout_reached']
+        self.log.debug(f'gripper_state: {self.gripper_state}')
         if abs(gripper_result['final_position'] - self.setup_args['actual_desired_position']) < POSITION_ERROR_MARGIN: 
             self.gripper_state['close_to_actual_position'] = True
         else:
@@ -216,7 +222,7 @@ class SkillAttachToCart(RayaSkill):
 
     async def major_angle_identification (self):
         if abs(self.angle) > MIN_STARTING_ANGLE:
-            self.log.error(f'Starting angle too high: {self.angle}, adjust angle')
+            self.log.warn(f'Starting angle too high: {self.angle}, adjust angle')
             await self.major_angle_correction()
 
     async def _timer_update(self):
@@ -244,9 +250,10 @@ class SkillAttachToCart(RayaSkill):
                 self.log.error(f'failed to read SRF values for {timer} sec')
                 self.abort(*ERROR_SRF_READING_FAILED)
             await asyncio.sleep(0.01)
-            self.middle_srf = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_MIDDLE] * 100 
-            srf_right = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT] * 100 
-            srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT] * 100
+            self.middle_srf = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_MIDDLE]
+            srf_right = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT]
+            srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT]
+            # self.log.debug(f'debug left srf: {srf_left}, right srf: {srf_right}')
             if( math.isnan(srf_right) and not math.isnan(srf_left)):
                 self.log.error('nan value recived from srf')
 
@@ -280,7 +287,33 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
 ############################ states functions #################################
 ###############################################################################
-
+    async def initial_gripper_close(self):
+        self.log.info('initial_gripper_close')
+        try:
+            i = 0
+            while(True):
+                await self.sleep(0.5)
+                if (i > MAX_INITIAL_CLOSE_ATTEMPTS):
+                    self.log.error(f'failed to close gripper {i} times')
+                    self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+                gripper_result = await self.arms.specific_robot_command(
+                                                name='cart/execute',
+                                                parameters={
+                                                        'gripper':'cart',
+                                                        'goal':GRIPPER_INITIAL_CLOSE_POSITION,
+                                                        'velocity':GRIPPER_VELOCITY,
+                                                        'pressure':GRIPPER_INITIAL_CLOSE_PRESSURE,
+                                                        'timeout':GRIPPER_TIMEOUT
+                                                    }, 
+                                                wait=True,
+                                            )
+                if (gripper_result['position_reached']):
+                    self.log.info('gripper initial close done')
+                    break
+                i += 1
+        except Exception as error:
+            self.log.error(f'gripper initial close failed, gripper stuck, error: {error}')
+            self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
     async def move_backwared(self):
 
         kp = VELOCITY_KP
@@ -298,6 +331,7 @@ class SkillAttachToCart(RayaSkill):
                             duration=2.0,
                             enable_obstacles=False,
                             wait=False,
+                            callback_feedback_async = self.cb_fb_reverse_sound
                         )
             except Exception as error:
                 self.log.error(f'linear movement failed, error: {error}')
@@ -306,7 +340,7 @@ class SkillAttachToCart(RayaSkill):
             await self.avoid_obstacle()
         if self.average_distance < PUSHING_IDENTIFIER_DISTANCE:
             await self.pushing_cart_identifier() 
-        
+            
     async def attach(self):
         self.log.info("stop moving, start attaching")
 
@@ -314,11 +348,12 @@ class SkillAttachToCart(RayaSkill):
 
         if (is_moving):
             await self.motion.cancel_motion()
+        # await self.initial_gripper_close()
         try:
 
             while(True):
                 await self.sleep(1.0)
-                if(self.gripper_state['attempts'] > MAX_ATTEMPTS):
+                if(self.gripper_state['attempts'] >= MAX_ATTEMPTS):
                     self.state = "finish"
                     break
 
@@ -349,8 +384,22 @@ class SkillAttachToCart(RayaSkill):
                     self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
 
                 self.gripper_state['attempts']+=1
-                if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION:
+                if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION and self.gripper_state['attempts'] < MAX_ATTEMPTS -1:
                    await self.vibrate()
+                if self.gripper_state['attempts'] == MAX_ATTEMPTS -1:
+                    gripper_result = await self.arms.specific_robot_command(
+                                        name='cart/execute',
+                                        parameters={
+                                                'gripper':'cart',
+                                                'goal':GRIPPER_OPEN_POSITION,
+                                                'velocity':GRIPPER_VELOCITY,
+                                                'pressure':GRIPPER_OPEN_PRESSURE_CONST,
+                                                'timeout':GRIPPER_TIMEOUT
+                                            }, 
+                                        wait=True,
+                                    )
+                
+
 
 
             await self.send_feedback(gripper_result)
@@ -385,7 +434,24 @@ class SkillAttachToCart(RayaSkill):
             await self.avoid_obstacle()
 
         self.log.info("finish rotate")
+    def setup_audio(self):
+        try:
+            files_lst = [f for f in os.listdir(LOCAL_AUDIO_PATH) if os.path.isfile(os.path.join(LOCAL_AUDIO_PATH, f))]
+            create_dat_folder(AUDIO_PATH)
 
+            for f in files_lst:
+                path_tmp = f'{AUDIO_PATH}/{f}'
+                self.log.debug(f'Resolving: {path_tmp}')
+                if not check_file_exists(path_tmp):
+                    self.log.info(f'Resolving file: {f}')
+                    shutil.copyfile(os.path.join(LOCAL_AUDIO_PATH, f), resolve_path(path_tmp))
+                else:
+                    self.log.info(f'File: {f}, already exists, skipping...')
+            
+            self.log.info('Finished audio setup')
+
+        except Exception as e:
+            self.log.error(f'Failed to setup audio, error: {e}')
 
     async def cart_attachment_verification(self):
         self.log.info('run cart_attachment_verification')
@@ -490,6 +556,7 @@ class SkillAttachToCart(RayaSkill):
         self.rotating_180 = self.setup_args['180_rotating']
         self.close_pressure = self.setup_args['close_pressure']
         self.timeout = self.setup_args['timeout']
+        self.beeping = self.setup_args['reverse_beeping_alert']
         if self.rotating_180:
             self.timeout = self.timeout + TIMEOUT_180
         self.gripper_state = {'final_position': 0.0,
@@ -512,11 +579,13 @@ class SkillAttachToCart(RayaSkill):
 
     async def setup(self):
         self.arms = await self.enable_controller('arms')
+        self.leds = await self.enable_controller('leds')
         self.sensors = await self.enable_controller('sensors')
         self.motion = await self.enable_controller('motion')
         self.sound = await self.enable_controller('sound')
         ## create folder for audio
-        create_dat_folder(AUDIO_PATH)
+        self.setup_audio()
+        # create_dat_folder(AUDIO_PATH)
               
 
 
@@ -544,18 +613,18 @@ class SkillAttachToCart(RayaSkill):
             await self.state_classifier()
 
             if self.state == 'moving':
-                if REVERSE_BEEPING_ALERT:
-                    if not self.sound.is_playing():
-                        await self.play_predefined_sound('beep', leds = False, wait = False)
+                # if REVERSE_BEEPING_ALERT:
+                    # if not self.sound.is_playing():
+                        # await self.play_predefined_sound('beep', wait = False)
                 await self.move_backwared()
             
             elif self.state == 'attaching':
                 await self.attach()
 
             elif (self.state == 'rotating'):
-                if REVERSE_BEEPING_ALERT:
-                    if not self.sound.is_playing():
-                        await self.play_predefined_sound('beep', leds = False, wait = False)
+                # if REVERSE_BEEPING_ALERT:
+                #     if not self.sound.is_playing():
+                #         await self.play_predefined_sound('beep', wait = False)
                 await self.adjust_angle()
 
             elif self.state == 'attach_verification':
@@ -584,12 +653,36 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
 #########################       UI           ##################################
 ###############################################################################        
+    async def cb_fb_reverse_sound(self,*args):
+            try:
+                await self.leds.animation(
+                                        group = 'head', 
+                                        color = 'RED', 
+                                        animation = 'MOTION_1', 
+                                        speed = 10, 
+                                        repetitions = 1, 
+                                        execution_control = LEDS_EXECUTION_CONTROL.OVERRIDE,
+                                        wait=False)
+                
+            except Exception as e:
+                # self.log.warn(f'error in led activation, skip')
+                pass
 
+            if REVERSE_BEEPING_ALERT:
+                try:
+                    if not self.sound.is_playing() and self.motion.is_moving():
+                        await self.play_predefined_sound(SOUND_NAME, volume = SOUND_VOLUME, wait = False) # Can change the volume to a variable taken from self.app.X
+                    elif not self.motion.is_moving():
+                        await self.sound.cancel_sound()
+                    # else == is_moving and is_playing -> then ignore
+                except Exception as e:
+                    self.log.warn(f'error in sound activation, skip {e}')
+                    pass
     async def play_predefined_sound(self,
                                     recording_name,
                                     audio_type = 'mp3',
-                                    leds = False,
-                                    wait = True):
+                                    wait = True,
+                                    volume = SOUND_VOLUME):
             '''
             INPUTS:
                 recording_name - the name of the recording ; str
@@ -602,6 +695,8 @@ class SkillAttachToCart(RayaSkill):
 
             if audio_type == 'mp3': # TODO: Add something more robust than eyed3 package
                 self.audio_duration = eyed3.load(resolve_path(path)).info.time_secs
+                
+            
 
             try:
                 await self.sound.play_sound(
@@ -609,11 +704,11 @@ class SkillAttachToCart(RayaSkill):
                     wait = wait,
                     callback_feedback = self.cb_feedback_sound,
                     callback_finish = self.cb_finish_sound,
-                    volume = SOUND_VOLUME
+                    volume = volume
                     )
 
             except Exception as e:
-                self.log.warning(f'Skipped playing sound, got error {e}')  
+                self.log.warn(f'Skipped playing sound, got error: {e}')  
 
 ###############################################################################
 ###############################################################################
