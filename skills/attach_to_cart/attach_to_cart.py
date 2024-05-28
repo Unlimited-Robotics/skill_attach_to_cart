@@ -28,6 +28,84 @@ class SkillAttachToCart(RayaSkill):
     REQUIRED_SETUP_ARGS = {
          
     }
+###############################################################################
+##################### setup - main - finish ###################################
+###############################################################################
+
+    async def setup(self):
+        self.arms = await self.enable_controller('arms')
+        self.leds = await self.enable_controller('leds')
+        self.lidar = await self.enable_controller('lidar')
+        self.sensors = await self.enable_controller('sensors')
+        self.motion = await self.enable_controller('motion')
+        self.sound = await self.enable_controller('sound')
+        ## create folder for audio
+        self.setup_audio()
+        # create_dat_folder(AUDIO_PATH)
+              
+
+
+    async def main(self):
+
+        self.log.info('SkillAttachToCart.main')
+
+        self.start_time = time.time()
+        self.timer = self.start_time
+
+        await self.pre_loop_actions()
+
+        while (True):
+
+            await self._timer_update()
+            await self._timeout_verification()
+
+            ### Read the srf values and update them
+            await self.read_srf_values()
+            await self.calculate_distance_parameters()
+            await self._cart_max_distance_verification()
+            await self.lidar_obstacle_detection()
+            
+            ### Idetify which state you are
+            await self.state_classifier()
+
+            if self.state == 'moving':
+                # if REVERSE_BEEPING_ALERT:
+                    # if not self.sound.is_playing():
+                        # await self.play_predefined_sound('beep', wait = False)
+                await self.move_backwared()
+            
+            elif self.state == 'attaching':
+                await self.attach()
+
+            elif (self.state == 'rotating'):
+                # if REVERSE_BEEPING_ALERT:
+                #     if not self.sound.is_playing():
+                #         await self.play_predefined_sound('beep', wait = False)
+                await self.adjust_angle()
+
+            elif self.state == 'attach_verification':
+                await self.cart_attachment_verification()
+
+            elif self.state == 'finish':
+                await self.finish()
+                
+                break
+
+            await asyncio.sleep(0.2)
+
+    async def finish(self):
+        cart_attached = self.gripper_state['cart_attached']
+        self.log.info(f'cart attachment status is: {cart_attached}, time to execute: {self.timer}')
+        await self.send_feedback(cart_attached)
+        # if self.gripper_state['cart_attached'] is False:
+        #     self.abort(*ERROR_CART_NOT_ATTACHED)
+        self.log.info('SkillAttachToCart.finish')
+        # await self.skill_apr2cart.execute_finish()
+
+###############################################################################
+########################### Helpers ############################################
+###############################################################################
+                
     
 ###############################################################################
 ########################### state classifiers #################################
@@ -128,40 +206,24 @@ class SkillAttachToCart(RayaSkill):
 ################### Un-expected senerio detections and actions ################
 ###############################################################################
 
-    async def obstacle_detection(self):
-        ### function detects if an object entered between gary and the cart
-        ### and if the object disapeared. function raises flag accordinly
-        try:
-            if abs(self.last_middle_srf / self.middle_srf) > OBSTACLE_DETECTED_RATIO:
-                self.log.debug(f'obstacle_detected: {self.obstacle_detected}, ratio: {self.last_middle_srf / self.middle_srf}')
-                self.obstacle_detected = True
-            elif self.obstacle_detected:
-                if abs(self.last_middle_srf / self.middle_srf) < NON_OBSTACLE_DETECTED_RATIO:
-                    self.log.debug(f'obstacle_detected: {self.obstacle_detected}, ratio: {self.last_middle_srf / self.middle_srf}')
-                    self.obstacle_detected = False
-        except Exception as error:
-                self.log.warn(f'middle SRF not in use, obstacle_detection failed, error: {error}')
+        
 
-        self.last_middle_srf = self.middle_srf
+    async def lidar_obstacle_detection(self):
+        upper_distance = min(self.average_distance/100 + 0.2, 0.6)
+        self.obstacle_detected = self.lidar.check_obstacle(lower_angle=-40, upper_angle=40, upper_distance = upper_distance)
+        self.log.warn(f'self.obstacle_detected {self.obstacle_detected}')
 
     async def avoid_obstacle(self):
         #### function activated if object or humen detected suddenly between the robot and cart
         ### the function stops gary from moving, alert with beeping sound and apply sleep method for OBSTACLE_SLEEPING_TIME seconds.
         ### after MAX_OBSTACLE_INDEX times of identification, the function abort the skill
-
-        is_moving = self.motion.is_moving()
-        if (is_moving):
-            await self.motion.cancel_motion()
-            if REVERSE_BEEPING_ALERT:
-                if not self.sound.is_playing():
-                        await self.play_predefined_sound('beep', leds = False, wait = False)
       
         self.obstacle_index = self.obstacle_index + 1
-        self.log.error(f'stop moving, obstacle detected {self.middle_srf} cm from gary, index: {self.obstacle_index}')
+        self.log.error(f'stop moving, obstacle detected, index: {self.obstacle_index}')
         if self.obstacle_index > MAX_OBSTACLE_INDEX:
             self.log.error(f'error, max obstacle index reached: {self.obstacle_index}')
-            if self.sound.is_playing():
-                self.sound.cancel_sound()
+            # if self.sound.is_playing():
+            #     self.sound.cancel_sound()
             self.abort(*ERROR_OBSTACLE_IDENTIFIED)
         await self.sleep(OBSTACLE_SLEEPING_TIME)
 
@@ -278,7 +340,7 @@ class SkillAttachToCart(RayaSkill):
         
         self.delta = self.dl - self.dr
         self.angle  = math.atan2(self.delta,DISTANCE_BETWEEN_SRF_SENSORS)/math.pi * 180
-        self.log.info(f'left:{self.dl}, right:{self.dr}, middle: {self.middle_srf} angle: {self.angle}')
+        self.log.info(f'left:{self.dl}, right:{self.dr}, avg: {self.average_distance} angle: {self.angle}')
 
 ###############################################################################
 ###############################################################################
@@ -287,33 +349,33 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
 ############################ states functions #################################
 ###############################################################################
-    async def initial_gripper_close(self):
-        self.log.info('initial_gripper_close')
-        try:
-            i = 0
-            while(True):
-                await self.sleep(0.5)
-                if (i > MAX_INITIAL_CLOSE_ATTEMPTS):
-                    self.log.error(f'failed to close gripper {i} times')
-                    self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
-                gripper_result = await self.arms.specific_robot_command(
-                                                name='cart/execute',
-                                                parameters={
-                                                        'gripper':'cart',
-                                                        'goal':GRIPPER_INITIAL_CLOSE_POSITION,
-                                                        'velocity':GRIPPER_VELOCITY,
-                                                        'pressure':GRIPPER_INITIAL_CLOSE_PRESSURE,
-                                                        'timeout':GRIPPER_TIMEOUT
-                                                    }, 
-                                                wait=True,
-                                            )
-                if (gripper_result['position_reached']):
-                    self.log.info('gripper initial close done')
-                    break
-                i += 1
-        except Exception as error:
-            self.log.error(f'gripper initial close failed, gripper stuck, error: {error}')
-            self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+    # async def initial_gripper_close(self):
+    #     self.log.info('initial_gripper_close')
+    #     try:
+    #         i = 0
+    #         while(True):
+    #             await self.sleep(0.5)
+    #             if (i > MAX_INITIAL_CLOSE_ATTEMPTS):
+    #                 self.log.error(f'failed to close gripper {i} times')
+    #                 self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+    #             gripper_result = await self.arms.specific_robot_command(
+    #                                             name='cart/execute',
+    #                                             parameters={
+    #                                                     'gripper':'cart',
+    #                                                     'goal':GRIPPER_INITIAL_CLOSE_POSITION,
+    #                                                     'velocity':GRIPPER_VELOCITY,
+    #                                                     'pressure':GRIPPER_INITIAL_CLOSE_PRESSURE,
+    #                                                     'timeout':GRIPPER_TIMEOUT
+    #                                                 }, 
+    #                                             wait=True,
+    #                                         )
+    #             if (gripper_result['position_reached']):
+    #                 self.log.info('gripper initial close done')
+    #                 break
+    #             i += 1
+    #     except Exception as error:
+    #         self.log.error(f'gripper initial close failed, gripper stuck, error: {error}')
+    #         self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
     async def move_backwared(self):
 
         kp = VELOCITY_KP
@@ -434,25 +496,7 @@ class SkillAttachToCart(RayaSkill):
             await self.avoid_obstacle()
 
         self.log.info("finish rotate")
-    def setup_audio(self):
-        try:
-            files_lst = [f for f in os.listdir(LOCAL_AUDIO_PATH) if os.path.isfile(os.path.join(LOCAL_AUDIO_PATH, f))]
-            create_dat_folder(AUDIO_PATH)
-
-            for f in files_lst:
-                path_tmp = f'{AUDIO_PATH}/{f}'
-                self.log.debug(f'Resolving: {path_tmp}')
-                if not check_file_exists(path_tmp):
-                    self.log.info(f'Resolving file: {f}')
-                    shutil.copyfile(os.path.join(LOCAL_AUDIO_PATH, f), resolve_path(path_tmp))
-                else:
-                    self.log.info(f'File: {f}, already exists, skipping...')
-            
-            self.log.info('Finished audio setup')
-
-        except Exception as e:
-            self.log.error(f'Failed to setup audio, error: {e}')
-
+    
     async def cart_attachment_verification(self):
         self.log.info('run cart_attachment_verification')
         verification_dl=self.dl
@@ -573,86 +617,30 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
 ###############################################################################
         
-###############################################################################
-##################### setup - main - finish ###################################
-###############################################################################
 
-    async def setup(self):
-        self.arms = await self.enable_controller('arms')
-        self.leds = await self.enable_controller('leds')
-        self.sensors = await self.enable_controller('sensors')
-        self.motion = await self.enable_controller('motion')
-        self.sound = await self.enable_controller('sound')
-        ## create folder for audio
-        self.setup_audio()
-        # create_dat_folder(AUDIO_PATH)
-              
-
-
-    async def main(self):
-
-        self.log.info('SkillAttachToCart.main')
-
-        self.start_time = time.time()
-        self.timer = self.start_time
-
-        await self.pre_loop_actions()
-
-        while (True):
-
-            await self._timer_update()
-            await self._timeout_verification()
-
-            ### Read the srf values and update them
-            await self.read_srf_values()
-            await self.calculate_distance_parameters()
-            await self._cart_max_distance_verification()
-            await self.obstacle_detection()
-            
-            ### Idetify which state you are
-            await self.state_classifier()
-
-            if self.state == 'moving':
-                # if REVERSE_BEEPING_ALERT:
-                    # if not self.sound.is_playing():
-                        # await self.play_predefined_sound('beep', wait = False)
-                await self.move_backwared()
-            
-            elif self.state == 'attaching':
-                await self.attach()
-
-            elif (self.state == 'rotating'):
-                # if REVERSE_BEEPING_ALERT:
-                #     if not self.sound.is_playing():
-                #         await self.play_predefined_sound('beep', wait = False)
-                await self.adjust_angle()
-
-            elif self.state == 'attach_verification':
-                await self.cart_attachment_verification()
-
-            elif self.state == 'finish':
-                await self.finish()
-                
-                break
-
-            await asyncio.sleep(0.2)
-
-    async def finish(self):
-        cart_attached = self.gripper_state['cart_attached']
-        self.log.info(f'cart attachment status is: {cart_attached}, time to execute: {self.timer}')
-        await self.send_feedback(cart_attached)
-        # if self.gripper_state['cart_attached'] is False:
-        #     self.abort(*ERROR_CART_NOT_ATTACHED)
-        self.log.info('SkillAttachToCart.finish')
-        # await self.skill_apr2cart.execute_finish()
-    
-###############################################################################
-###############################################################################
-###############################################################################
         
 ###############################################################################
 #########################       UI           ##################################
 ###############################################################################        
+    def setup_audio(self):
+        try:
+            files_lst = [f for f in os.listdir(LOCAL_AUDIO_PATH) if os.path.isfile(os.path.join(LOCAL_AUDIO_PATH, f))]
+            create_dat_folder(AUDIO_PATH)
+
+            for f in files_lst:
+                path_tmp = f'{AUDIO_PATH}/{f}'
+                self.log.debug(f'Resolving: {path_tmp}')
+                if not check_file_exists(path_tmp):
+                    self.log.info(f'Resolving file: {f}')
+                    shutil.copyfile(os.path.join(LOCAL_AUDIO_PATH, f), resolve_path(path_tmp))
+                else:
+                    self.log.info(f'File: {f}, already exists, skipping...')
+            
+            self.log.info('Finished audio setup')
+
+        except Exception as e:
+            self.log.error(f'Failed to setup audio, error: {e}')
+
     async def cb_fb_reverse_sound(self,*args):
             try:
                 await self.leds.animation(
