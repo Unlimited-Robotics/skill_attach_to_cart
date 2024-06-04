@@ -85,6 +85,8 @@ class SkillAttachToCart(RayaSkill):
 
             elif self.state == 'attach_verification':
                 await self.cart_attachment_verification()
+            elif self.state == 'abort':
+                await self.abort_state()
 
             elif self.state == 'finish':
                 await self.finish()
@@ -190,6 +192,7 @@ class SkillAttachToCart(RayaSkill):
         if abs(gripper_result['final_position'] - self.setup_args['actual_desired_position']) < POSITION_ERROR_MARGIN: 
             self.gripper_state['close_to_actual_position'] = True
         else:
+            self.gripper_state['close_to_actual_position'] = False
             self.log.info(f'Attemps,{self.gripper_state["attempts"]}, final_position {gripper_result["final_position"]}')
         
     def cb_feedback_sound(self, error, error_msg, distance):
@@ -312,7 +315,6 @@ class SkillAttachToCart(RayaSkill):
                 self.log.error(f'failed to read SRF values for {timer} sec')
                 self.abort(*ERROR_SRF_READING_FAILED)
             await asyncio.sleep(0.01)
-            self.middle_srf = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_MIDDLE]
             srf_right = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT]
             srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT]
             # self.log.debug(f'debug left srf: {srf_left}, right srf: {srf_right}')
@@ -325,7 +327,6 @@ class SkillAttachToCart(RayaSkill):
                     srf_right = MAX_SRF_VALUE
                 if srf_left > MAX_SRF_VALUE:
                     srf_left = MAX_SRF_VALUE  
-                # self.middle_srf = FILTER_WEIGHT * self.dr + (1-FILTER_WEIGHT) * srf_middle  
                 self.dr = FILTER_WEIGHT * self.dr + (1-FILTER_WEIGHT) * srf_right
                 self.dl = FILTER_WEIGHT * self.dl + (1-FILTER_WEIGHT) * srf_left
                 self.average_distance = (self.dl + self.dr)/2
@@ -416,7 +417,7 @@ class SkillAttachToCart(RayaSkill):
             while(True):
                 await self.sleep(1.0)
                 if(self.gripper_state['attempts'] >= MAX_ATTEMPTS):
-                    self.state = "finish"
+                    self.state = "abort"
                     break
 
                 gripper_result = await self.arms.specific_robot_command(
@@ -496,7 +497,35 @@ class SkillAttachToCart(RayaSkill):
             await self.avoid_obstacle()
 
         self.log.info("finish rotate")
-    
+    async def abort_state(self):
+        try:
+            attempts = 0
+            while(self.gripper_state['final_position'] > GRIPPER_ABORT_OPEN_POSITION):
+                gripper_result = await self.arms.specific_robot_command(
+                                            name='cart/execute',
+                                            parameters={
+                                                    'gripper':'cart',
+                                                    'goal':GRIPPER_OPEN_POSITION,
+                                                    'velocity':GRIPPER_VELOCITY,
+                                                    'pressure':GRIPPER_ABORT_OPEN_PRESSURE,
+                                                    'timeout':GRIPPER_TIMEOUT
+                                                }, 
+                                            wait=True,
+                                        )
+                
+                if attempts > MAX_ATTEMPTS:
+                    break
+            await self.gripper_feedback_cb(gripper_result)
+            self.state = 'attach_verification'
+
+        except Exception as error:
+            self.log.error(f'gripper fail error is: {error}'
+                            F'error type: {type(error)}')
+            self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+            self.state = 'finish'
+        
+            
+
     async def cart_attachment_verification(self):
         self.log.info('run cart_attachment_verification')
         verification_dl=self.dl
@@ -517,6 +546,9 @@ class SkillAttachToCart(RayaSkill):
                 dr_delta = abs(verification_dr - self.dr)
                 if dl_delta < VERIFICATION_DISTANCE or dr_delta < VERIFICATION_DISTANCE:
                     self.gripper_state['cart_attached'] = True
+                    if not self.gripper_state['close_to_actual_position']:
+                        self.state = "abort"
+       
                 else:
                     self.gripper_state['cart_attached'] = False
                 await asyncio.sleep(0.2)
@@ -590,12 +622,10 @@ class SkillAttachToCart(RayaSkill):
         self.angle = 0
         self.dl = 0
         self.dr = 0
-        self.middle_srf = 0
         self.pushing_index = 0
         self.obstacle_index = 0
         self.obstacle_detected = False
         self.obtacle_enable = True
-        self.last_middle_srf = 0
         self.last_average_distance = 0.0
         self.rotating_180 = self.setup_args['180_rotating']
         self.close_pressure = self.setup_args['close_pressure']
