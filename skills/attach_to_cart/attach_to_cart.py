@@ -127,6 +127,8 @@ class SkillAttachToCart(RayaSkill):
 
         elif (self.state == 'finish'):
             return True
+        elif (self.state == 'abort'):
+            return True
         
         elif ((self.dl<ROTATING_DISTANCE or self.dr<ROTATING_DISTANCE) and\
              (self.dl+self.dr)/2 < ROTATING_DISTANCE_AV and\
@@ -144,6 +146,7 @@ class SkillAttachToCart(RayaSkill):
                           abs(self.angle)<ATACHING_ANGLE_MAX)):
             self.state = 'attaching'
             return True
+        
         
         else:
             self.state = 'moving'
@@ -350,33 +353,7 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
 ############################ states functions #################################
 ###############################################################################
-    # async def initial_gripper_close(self):
-    #     self.log.info('initial_gripper_close')
-    #     try:
-    #         i = 0
-    #         while(True):
-    #             await self.sleep(0.5)
-    #             if (i > MAX_INITIAL_CLOSE_ATTEMPTS):
-    #                 self.log.error(f'failed to close gripper {i} times')
-    #                 self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
-    #             gripper_result = await self.arms.specific_robot_command(
-    #                                             name='cart/execute',
-    #                                             parameters={
-    #                                                     'gripper':'cart',
-    #                                                     'goal':GRIPPER_INITIAL_CLOSE_POSITION,
-    #                                                     'velocity':GRIPPER_VELOCITY,
-    #                                                     'pressure':GRIPPER_INITIAL_CLOSE_PRESSURE,
-    #                                                     'timeout':GRIPPER_TIMEOUT
-    #                                                 }, 
-    #                                             wait=True,
-    #                                         )
-    #             if (gripper_result['position_reached']):
-    #                 self.log.info('gripper initial close done')
-    #                 break
-    #             i += 1
-    #     except Exception as error:
-    #         self.log.error(f'gripper initial close failed, gripper stuck, error: {error}')
-    #         self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+
     async def move_backwared(self):
 
         kp = VELOCITY_KP
@@ -413,11 +390,12 @@ class SkillAttachToCart(RayaSkill):
             await self.motion.cancel_motion()
         # await self.initial_gripper_close()
         try:
-
-            while(True):
+            loop_flag = True
+            while(loop_flag):
                 await self.sleep(1.0)
-                if(self.gripper_state['attempts'] >= MAX_ATTEMPTS):
-                    self.state = "abort"
+                if(self.gripper_state['attempts'] > MAX_ATTEMPTS):
+                    self.state = "attach_verification"
+                    loop_flag = False
                     break
 
                 gripper_result = await self.arms.specific_robot_command(
@@ -426,7 +404,7 @@ class SkillAttachToCart(RayaSkill):
                                                 'gripper':'cart',
                                                 'goal':GRIPPER_CLOSE_POSITION,
                                                 'velocity':GRIPPER_VELOCITY,
-                                                'pressure':self.close_pressure,
+                                                'pressure':GRIPPER_CLOSE_PRESSURE_CONST,
                                                 'timeout':GRIPPER_TIMEOUT
                                             }, 
                                         wait=True,
@@ -436,31 +414,37 @@ class SkillAttachToCart(RayaSkill):
 
                 await self.gripper_feedback_cb(gripper_result)
                 await self.gripper_state_classifier()
-    
+                self.gripper_state['attempts']+=1
                 cart_attached = self.gripper_state['cart_attached']
                 if cart_attached:
                     self.state = 'attach_verification'
+                    loop_flag = False
                     break
 
-                if self.gripper_state['position_reached'] == True:
-                    self.log.error(f'fail, cart gripper not attached')
-                    self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+                elif self.gripper_state['position_reached'] == True:
+                    self.log.error(f'cart might not be attached, running attach_verification')
+                    self.state = "attach_verification"
+                    loop_flag = False
+                    break
+                    
+                    # self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
 
-                self.gripper_state['attempts']+=1
-                if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION and self.gripper_state['attempts'] < MAX_ATTEMPTS -1:
+                
+                elif self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION and self.gripper_state['attempts'] < MAX_ATTEMPTS:
                    await self.vibrate()
-                if self.gripper_state['attempts'] == MAX_ATTEMPTS -1:
-                    gripper_result = await self.arms.specific_robot_command(
-                                        name='cart/execute',
-                                        parameters={
-                                                'gripper':'cart',
-                                                'goal':GRIPPER_OPEN_POSITION,
-                                                'velocity':GRIPPER_VELOCITY,
-                                                'pressure':GRIPPER_OPEN_PRESSURE_CONST,
-                                                'timeout':GRIPPER_TIMEOUT
-                                            }, 
-                                        wait=True,
-                                    )
+                # if self.gripper_state['attempts'] == MAX_ATTEMPTS -1:
+                #     gripper_result = await self.arms.specific_robot_command(
+                #                         name='cart/execute',
+                #                         parameters={
+                #                                 'gripper':'cart',
+                #                                 'goal':GRIPPER_OPEN_POSITION,
+                #                                 'velocity':GRIPPER_VELOCITY,
+                #                                 'pressure':GRIPPER_OPEN_PRESSURE_CONST,
+                #                                 'timeout':GRIPPER_TIMEOUT
+                #                             }, 
+                #                         wait=True,
+                #                     )
+                
                 
 
 
@@ -500,7 +484,7 @@ class SkillAttachToCart(RayaSkill):
     async def abort_state(self):
         try:
             attempts = 0
-            while(self.gripper_state['final_position'] > GRIPPER_ABORT_OPEN_POSITION):
+            while(self.gripper_state['final_position'] < GRIPPER_ABORT_OPEN_POSITION):
                 gripper_result = await self.arms.specific_robot_command(
                                             name='cart/execute',
                                             parameters={
@@ -515,7 +499,7 @@ class SkillAttachToCart(RayaSkill):
                 
                 if attempts > MAX_ATTEMPTS:
                     break
-            await self.gripper_feedback_cb(gripper_result)
+                await self.gripper_feedback_cb(gripper_result)
             self.state = 'attach_verification'
 
         except Exception as error:
