@@ -2,19 +2,15 @@
     "name": "attach_to_cart",
     "description": "",
     "type": "skill",
-    "version": "0.1.5.dev",
+    "version": "3.0.0.dev",
     "dependencies": {
         "pip": [],
         "skills": [
-            {
-                "name": "approach_to_tags",
-                "version": "==2.0.0"
-            }
         ]
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/unlimitedrobotics-skills/attach_to_cart"
+        "url": "https://github.com/Unlimited-Robotics/skill_attach_to_cart"
     },
     "license": "MIT",
     "author": {
