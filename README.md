@@ -11,15 +11,20 @@ This skill is used when gary required to attach to cart, Attach to cart skill us
 * [Ra-Ya controllers]: MotionController, CVController
 
 Required Hardware:
-1. cart gripper
-2. SRF sensors connected to the cart gripper
-3. cart with adapter
+1. cart gripper with X4 actuator
+2. cart with adapter matched with X4 cart gripper
+3. SRF sensors connected to the cart gripper
+4. skill might use lidar for obstacle avoidance when reversing (depend on skill version)
+ 
 default parameters:
 1. 'timeout' - full skill timeout 70 sec as default
 2. '180_rotating' - bool for include 180 degree rotate, false as default
 3. 'actual_desired_position' - parameter for close pistion identification
 4. 'reverse_beeping_alert' - bool false as defualt
 5. 'close_pressure' - pressure const, default as 0.6
+
+Required code version:
+updated version of cart_config.yaml inside gary_bringup
 
 
 
