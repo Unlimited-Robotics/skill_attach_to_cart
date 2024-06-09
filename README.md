@@ -2,7 +2,7 @@
 
 Attach to cart skill
 Required Hardware:
-1. cart gripper
+1. X4 cart gripper 
 2. SRF sensors connected to the cart gripper
 3. cart with adapter
 default parameters:
@@ -11,5 +11,10 @@ default parameters:
 3. 'actual_desired_position' - parameter for close pistion identification
 4. 'reverse_beeping_alert' - bool false as defualt
 5. 'close_pressure' - pressure const, default as 0.6
+
+make sure you have updated version of:
+gary_robot/gary_bring_up/config/cart_config.yaml
+
+
 
 
