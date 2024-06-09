@@ -15,6 +15,10 @@ class RayaApplication(RayaApplicationBase):
         elif self.detach:
             await self.skill_detach.execute_setup({})
         
+        # Correct bad parser arguments
+        self.target_tags = [str(int(tag)) for tag in self.target_tags]
+        self.tag_size = self.tag_size[0]
+
         if self.attach:
             exectute_args = {
                 'target_distance': self.target_distance,
@@ -24,14 +28,14 @@ class RayaApplication(RayaApplicationBase):
             }
             
             await self.skill_att2cart.execute_main(
-                execute_args={},
-                callback=self.cb_skill_done,
-                feedback_callback=self.cb_skill_feedback,
+                execute_args=exectute_args,
+                callback_done=self.cb_skill_done,
+                callback_feedback=self.cb_skill_feedback,
                 wait=False
             )
         elif self.detach:
             await self.skill_detach.execute_main(
-                execute_args={},
+                execute_args=exectute_args,
                 callback=self.cb_skill_done,
                 feedback_callback=self.cb_skill_feedback,
                 wait=False
@@ -103,7 +107,7 @@ class RayaApplication(RayaApplicationBase):
             
             self.tag_size = self.get_argument(
                 '-ts', '--tag_size',
-                type=list,
+                type=float,
                 help='Size of the tag in meters',
                 nargs='+',
                 required=True
@@ -111,7 +115,7 @@ class RayaApplication(RayaApplicationBase):
             
             self.target_tags = self.get_argument(
                 '-tt', '--target_tags',
-                type=list,
+                type=float,
                 help='Tags to target',
                 nargs='+',
                 required=True
