@@ -1,4 +1,4 @@
-# Ra-Ya Skill - Attach to Cart
+### Ra-Ya Skill - Attach to Cart
 
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/Unlimited-Robotics/skill_attach_to_cart/graphs/commit-activity)
 
@@ -10,21 +10,22 @@ This skill is used when gary required to attach to cart, Attach to cart skill us
 
 * [Ra-Ya controllers]: MotionController, CVController
 
-Required Hardware:
+# Required Hardware:
 1. cart gripper with X4 actuator
-2. cart with adapter matched with X4 cart gripper
-3. SRF sensors connected to the cart gripper
-4. skill might use lidar for obstacle avoidance when reversing (depend on skill version)
+2. please run bringup and check the cart gripper workes properly from jupiter.
+if not, try gary_robot integration branch. X4 cart gripper require changed config file
+3. cart with adapter matched with X4 cart gripper
+4. SRF sensors connected to the cart gripper
+5. skill might use lidar for obstacle avoidance when reversing (depend on skill version)
  
-default parameters:
+# default parameters:
 1. 'timeout' - full skill timeout 70 sec as default
 2. '180_rotating' - bool for include 180 degree rotate, false as default
 3. 'actual_desired_position' - parameter for close pistion identification
 4. 'reverse_beeping_alert' - bool false as defualt
 5. 'close_pressure' - pressure const, default as 0.6
 
-Required code version:
-updated version of cart_config.yaml inside gary_bringup
+
 
 
 
