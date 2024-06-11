@@ -92,7 +92,7 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def approach(self):
-        if self.setup_args['reverse']:
+        if self.execute_args['reverse']:
             self.sources = ['back']
         else:
             self.sources = ['nav_bottom', 'nav_top']
@@ -178,13 +178,13 @@ class SkillAttachToCart(RayaFSMSkill):
 #########################    TRASITIONS      ##################################
 ###############################################################################
 
-    async def transition_SETUP(self):
+    async def transition_from_SETUP(self):
         self.set_state('APPROACH')
 
 
-    async def transition_APPROACH(self):
+    async def transition_from_APPROACH(self):
         self.set_state('ATTACH')
 
 
-    async def transition_ATTACH(self):
+    async def transition_from_ATTACH(self):
         self.set_state('END')
