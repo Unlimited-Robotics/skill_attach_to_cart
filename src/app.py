@@ -60,7 +60,12 @@ class RayaApplication(RayaApplicationBase):
         # self.log.info(f'cb_skill_done!!!!! exception: {type(exception)}')
         self.log.info(f'cb_skill_done, result: {result}')
         if exception is None:
-            await self.skill_att2cart.execute_finish()
+            if self.attach:
+                await self.skill_att2cart.execute_finish()
+            elif self.detach:
+                await self.skill_detach.execute_finish()
+            else:
+                self.log.warn('No skill to finish')
         else: 
             self.log.warn(
                     'error occured while attaching, exception type: '
