@@ -49,9 +49,9 @@ class SkillDetachCart(RayaSkill):
 
     async def gripper_state_classifier(self):
         if self.gripper_state['position_reached'] == True:
-            self.gripper_state['cart_attached'] = False
+            self.gripper_state['cart_detached'] = False
         else:
-            self.gripper_state['cart_attached'] = True
+            self.gripper_state['cart_detached'] = True
 
 
     async def cart_detachment_verification(self):
@@ -80,9 +80,9 @@ class SkillDetachCart(RayaSkill):
                     #     f'cart still attached dl_delta:{dl_delta}, '
                     #     f'dr_delta:{dr_delta}'
                     # ))
-                    self.gripper_state['cart_attached'] = True
+                    self.gripper_state['cart_detached'] = True
                 else:
-                    self.gripper_state['cart_attached'] = False
+                    self.gripper_state['cart_detached'] = False
                     # self.log.debug('cart detached')
 
         except Exception as error:
@@ -146,9 +146,9 @@ class SkillDetachCart(RayaSkill):
 
                 await self.gripper_state_classifier()
     
-                cart_attached = self.gripper_state['cart_attached']
+                cart_detached = gripper_result['success']
 
-                if not cart_attached:
+                if cart_detached:
                     break
                     
                     
@@ -163,7 +163,7 @@ class SkillDetachCart(RayaSkill):
 
             await self.send_feedback(gripper_result)
             await self.send_feedback({
-                'cart_detached_success' : not cart_attached
+                'cart_detached_success' : not cart_detached
             })
             await self.cart_detachment_verification()
 
@@ -254,7 +254,7 @@ class SkillDetachCart(RayaSkill):
             'pressure_reached': False,
             'success': False,
             'timeout_reached': False,
-            'cart_attached': True,
+            'cart_detached': True,
             'close_to_actual_position' : False
         }
 
@@ -289,13 +289,13 @@ class SkillDetachCart(RayaSkill):
         
 
     async def finish(self):
-        cart_attached = self.gripper_state['cart_attached']
+        cart_detached = self.gripper_state['cart_detached']
         self.log.info((
-            f'cart detachment status is: {not cart_attached}, '
+            f'cart detachment status is: {not cart_detached}, '
             f'time to execute: {self.timer}'
         ))
         await self.send_feedback((
             'application finished, cart detachment is: '
-            f'{not cart_attached}'
+            f'{not cart_detached}'
         ))
         self.log.info('SkillDetachCart.finish')
