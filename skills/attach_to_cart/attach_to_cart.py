@@ -118,6 +118,7 @@ class SkillAttachToCart(RayaFSMSkill):
             self.app.log.warn(f'Skill Failed:' )
             self.app.log.warn(f'  error_code:    {e.error_code}' )
             self.app.log.warn(f'  error_message: {e.error_msg}' )
+            self.abort(error_code=e.error_code, error_msg=e.error_msg)
         else:
             self.app.log.warn(f'///////////////')
             self.app.log.warn(f'Skill Finished:' )
