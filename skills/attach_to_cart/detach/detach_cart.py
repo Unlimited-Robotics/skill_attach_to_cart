@@ -23,7 +23,9 @@ class SkillDetachCart(RayaSkill):
         # 'actual_desired_position'
     }
     
-    DEFAULT_EXECUTE_ARGS = {}
+    DEFAULT_EXECUTE_ARGS = {
+        'move_fowards': False,
+    }
 
     REQUIREDT_EXECUTE_ARGS = {}
 
@@ -85,7 +87,7 @@ class SkillDetachCart(RayaSkill):
                 x_velocity = VERIFICATION_VELOCITY,
                 y_velocity = 0.0,
                 angular_velocity=0.0,
-                duration=3.0,
+                duration=6.0,
                 enable_obstacles=False,
                 wait=False, 
             )
@@ -187,8 +189,8 @@ class SkillDetachCart(RayaSkill):
             await self.send_feedback({
                 'cart_detached_success' : not cart_detached
             })
-            await self.cart_detachment_verification()
-            await self.move_fowards()
+            if self.execute_args['move_fowards']:
+                await self.cart_detachment_verification()
 
         except Exception as error:
                 self.log.error((
