@@ -16,10 +16,9 @@ class RayaApplication(RayaApplicationBase):
             await self.skill_detach.execute_setup({})
         
         # Correct bad parser arguments
-        self.target_tags = [str(int(tag)) for tag in self.target_tags]
-        self.tag_size = self.tag_size[0]
-
         if self.attach:
+            self.target_tags = [str(int(tag)) for tag in self.target_tags]
+            self.tag_size = self.tag_size[0]
             exectute_args = {
                 'target_distance': self.target_distance,
                 'reverse': self.reverse,
@@ -34,10 +33,11 @@ class RayaApplication(RayaApplicationBase):
                 wait=False
             )
         elif self.detach:
+            exectute_args = {}
             await self.skill_detach.execute_main(
                 execute_args=exectute_args,
-                callback=self.cb_skill_done,
-                feedback_callback=self.cb_skill_feedback,
+                callback_done=self.cb_skill_done,
+                callback_feedback=self.cb_skill_feedback,
                 wait=False
             )
         
