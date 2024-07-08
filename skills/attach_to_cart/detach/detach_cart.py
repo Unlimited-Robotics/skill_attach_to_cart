@@ -47,6 +47,28 @@ class SkillDetachCart(RayaSkill):
         # ))
 
 
+    async def move_fowards(self):
+        kp = VELOCITY_KP
+        cmd_velocity = kp*self.average_distance
+        self.app.log.info(f'cmd_velocity {cmd_velocity}')
+
+        if abs(cmd_velocity) > MAX_MOVING_VELOCITY:
+            cmd_velocity = MAX_MOVING_VELOCITY
+        try:
+            self.log.warning('Moving fowards')
+            await self.motion.set_velocity(
+                x_velocity=VERIFICATION_VELOCITY,
+                y_velocity=0.0,
+                angular_velocity=0.0,
+                duration=2.0,
+                enable_obstacles=True,
+                wait=True,
+            )
+        except Exception as error:
+            self.app.log.error(f'linear movement failed, error: {error}')
+            self.abort(*ERROR_LINEAR_MOVEMENT_FAILED)
+    
+
     async def gripper_state_classifier(self):
         if self.gripper_state['position_reached'] == True:
             self.gripper_state['cart_detached'] = False
@@ -166,6 +188,7 @@ class SkillDetachCart(RayaSkill):
                 'cart_detached_success' : not cart_detached
             })
             await self.cart_detachment_verification()
+            await self.move_fowards()
 
         except Exception as error:
                 self.log.error((
