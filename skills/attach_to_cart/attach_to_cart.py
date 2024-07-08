@@ -92,7 +92,10 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def approach(self):
-        self.sources = ['nav_bottom', 'nav_top']
+        if self.execute_args['reverse']:
+            self.sources = ['back']
+        else:
+            self.sources = ['nav_bottom', 'nav_top']
 
         self.app.log.debug(f'Used sources: {self.sources}')
 
@@ -163,8 +166,6 @@ class SkillAttachToCart(RayaFSMSkill):
 
     async def enter_ATTACH(self):
         self.app.log.info('Entered ATTACH state')
-        if not self.execute_args['reverse']:
-            self.motion.rotate(180.0, wait=True)
         await self.attach.execute_main()
 
 
