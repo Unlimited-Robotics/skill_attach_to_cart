@@ -18,6 +18,7 @@ class RayaApplication(RayaApplicationBase):
         # Correct bad parser arguments
         if self.attach:
             self.target_tags = [str(int(tag)) for tag in self.target_tags]
+            self.log.debug(f'target_tags: {self.target_tags}')
             self.tag_size = self.tag_size[0]
             exectute_args = {
                 'target_distance': self.target_distance,
