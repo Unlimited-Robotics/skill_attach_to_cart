@@ -11,6 +11,7 @@ ERROR_TIMEOUT_REACHED = (2,f'loop timeout reached')
 ERROR_CART_NOT_ACCESSABLE = (0, 'cart is too far or not accessable,')
 ERROR_OBSTACLE_IDENTIFIED = (9,'obstacle detected behind gary')
 ERROR_SRF_READING_FAILED = (10,'fail to read SRF value OR got only nan values')
+ERROR_NO_TAGS_DETECTED = (11,'no tags detected')
 
 ###### Rotating
 
@@ -92,3 +93,13 @@ GRIPPER_ACTUAL_DESIRED_POSITION = 0.02
 FULL_APP_TIMEOUT = 70.0
 DEFUALT_ROTATING_180 = False
 REVERSE_BEEPING_ALERT = False ### this version not support beeping
+
+MODEL_PARAMS = {
+    'families' : 'tag36h11',
+    'nthreads' : 4,
+    'quad_decimate' : 2.0,
+    'quad_sigma': 0.0,
+    'decode_sharpening' : 0.25,
+    'refine_edges' : 1,
+    'tag_size' : 0.0
+}
