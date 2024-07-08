@@ -92,10 +92,7 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def approach(self):
-        if self.execute_args['reverse']:
-            self.sources = ['back']
-        else:
-            self.sources = ['nav_bottom', 'nav_top']
+        self.sources = ['nav_bottom', 'nav_top']
 
         self.app.log.debug(f'Used sources: {self.sources}')
 
