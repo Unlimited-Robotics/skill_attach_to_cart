@@ -173,11 +173,11 @@ class SkillAttachToCart(RayaFSMSkill):
                 if abs(tags[tag].y) < abs(tags[centerest_tag].y):
                     centerest_tag = tag
         
-        # self.log.info('Disabling model...')
-        # await self.cv.disable_model(model_obj=self.detector)
-        # self.log.info('Disabling cameras...')
-        # for camera in self.sources:
-        #     await self.cameras.disable_camera(camera_name=camera)
+        self.log.info('Disabling model...')
+        await self.cv.disable_model(model_obj=self.detector)
+        self.log.info('Disabling cameras...')
+        for camera in self.sources:
+            await self.cameras.disable_camera(camera_name=camera)
         
         if centerest_tag is None:
             self.abort(*ERROR_NO_TAGS_DETECTED)
