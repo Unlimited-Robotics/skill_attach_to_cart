@@ -207,6 +207,7 @@ class SkillAttachToCart(RayaFSMSkill):
             self.sources = ['nav_bottom', 'nav_top']
 
         self.app.log.debug(f'Used sources: {self.sources}')
+        self.app.log.debug(f'Used tags: {self.execute_args["target_tags"]}')
         
         self.app.log.info('Enabling cameras...')
         for camera in self.sources:
