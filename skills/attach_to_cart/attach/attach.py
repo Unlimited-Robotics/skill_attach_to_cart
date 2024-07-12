@@ -58,10 +58,14 @@ class AttachToCart(RayaSkill):
                   (self.dl<ATACHING_DISTANCE_MAX and\
                     self.dr<ATACHING_DISTANCE_MAX and\
                           abs(self.angle)<ATACHING_ANGLE_MAX)):
+            self.log.warn('Attaching.......')
+            self.log.warn(f'dl: {self.dl}, dr: {self.dr}')
+            self.log.warn(f'min {ATACHING_DISTANCE_MIN} max {ATACHING_DISTANCE_MAX}')
             self.state = 'attaching'
             return True
         
         else:
+            self.log.warn('Moving.......')
             self.state = 'moving'
             return True
         
@@ -290,8 +294,8 @@ class AttachToCart(RayaSkill):
             await asyncio.sleep(0.01)
             self.middle_srf = 0
             srf_right = \
-                self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT] 
-            srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT]
+                self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT] * 100.0
+            srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT] * 100.0
             if(math.isnan(srf_right)):
                 self.app.log.error('nan value recived from srf_right')
             elif(math.isnan(srf_left)):
@@ -334,7 +338,7 @@ class AttachToCart(RayaSkill):
 ###############################################################################
 
     async def move_backwared(self):
-
+        self.log.warn('Moving backward')
         kp = VELOCITY_KP
         cmd_velocity = kp*self.average_distance
         self.app.log.info(f'cmd_velocity {cmd_velocity}')
@@ -486,17 +490,26 @@ class AttachToCart(RayaSkill):
 
         self.pre_loop_finish = True
         try:
-            gripper_result = await self.arms.specific_robot_command(
-                name='cart/execute',
-                parameters={
-                    'gripper':'cart',
-                    'goal':GRIPPER_OPEN_POSITION,
-                    'velocity':GRIPPER_VELOCITY,
-                    'pressure':GRIPPER_OPEN_PRESSURE_CONST,
-                    'timeout':GRIPPER_TIMEOUT
-                }, 
-                wait=True,
-            )
+            # TODO: check this part
+            # gripper_result = await self.arms.specific_robot_command(
+            #     name='cart/execute',
+            #     parameters={
+            #         'gripper':'cart',
+            #         'goal':GRIPPER_OPEN_POSITION,
+            #         'velocity':GRIPPER_VELOCITY,
+            #         'pressure':GRIPPER_OPEN_PRESSURE_CONST,
+            #         'timeout':GRIPPER_TIMEOUT
+            #     }, 
+            #     wait=True,
+            # )
+            gripper_result ={
+                'final_position': 1.0,
+                'final_pressure': 1.0,
+                'position_reached': False,
+                'pressure_reached': True,
+                'success': True,
+                'timeout_reached': False
+            }
             
             self.app.log.debug(f'gripper result: {gripper_result}')
 
