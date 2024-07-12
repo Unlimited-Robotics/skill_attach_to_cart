@@ -114,6 +114,7 @@ class SkillAttachToCart(RayaFSMSkill):
                 sources=self.sources,
                 target_tags=[self.selected_tag],
                 target_distance=self.execute_args['target_distance'],
+                wait_target_time=30.0,
                 reverse=self.execute_args['reverse'],
                 max_x_error= 0.03, 
                 max_y_error= 0.03,

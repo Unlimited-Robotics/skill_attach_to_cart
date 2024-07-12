@@ -288,8 +288,7 @@ class AttachToCart(RayaSkill):
                 self.app.log.error(f'failed to read SRF values for {timer} sec')
                 self.abort(*ERROR_SRF_READING_FAILED)
             await asyncio.sleep(0.01)
-            self.middle_srf = \
-                self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_MIDDLE] 
+            self.middle_srf = 0
             srf_right = \
                 self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT] 
             srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT]
