@@ -155,6 +155,18 @@ class SkillAttachToCart(RayaFSMSkill):
 
     async def select_best_tag(self):
         self.app.log.info('Selecting a tag...')
+        start_time = time.time()
+        while True:
+            if time.time() - start_time > self.execute_args['wait_time_for_detection']:
+                break
+            
+            if len(self.view_tags.keys()) == 0:
+                self.log.debug('No tags detected, waiting...')
+            else:
+                self.log.debug('Tags detected')
+                break
+            await self.sleep(0.1)
+        
         if len(self.view_tags.keys()) == 0:
             wait_time = self.execute_args['wait_time_for_detection']
             self.app.log.warn(f'No tags detected, waiting for {wait_time} secs...')
