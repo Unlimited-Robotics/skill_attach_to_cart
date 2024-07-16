@@ -1,6 +1,7 @@
 from raya.application_base import RayaApplicationBase
 
 from skills.attach_to_cart import SkillAttachToCart, SkillDetachCart
+from raya.exceptions import RayaSkillAborted
 
 
 class RayaApplication(RayaApplicationBase):
@@ -12,14 +13,17 @@ class RayaApplication(RayaApplicationBase):
         self.skill_detach = self.register_skill(SkillDetachCart)
         if self.attach:
             await self.skill_att2cart.execute_setup({})
-        elif self.detach:
-            await self.skill_detach.execute_setup({})
-        
-        # Correct bad parser arguments
-        if self.attach:
             self.target_tags = [str(int(tag)) for tag in self.target_tags]
             self.log.debug(f'target_tags: {self.target_tags}')
             self.tag_size = self.tag_size[0]
+        elif self.detach:
+            await self.skill_detach.execute_setup({})
+        
+        
+
+    async def loop(self):
+        # Correct bad parser arguments
+        if self.attach:
             exectute_args = {
                 'target_distance': self.target_distance,
                 'reverse': self.reverse,
@@ -42,15 +46,15 @@ class RayaApplication(RayaApplicationBase):
                 wait=False
             )
         
-
-    async def main(self):
-        if self.attach:
-            result = await self.skill_att2cart.wait_main()
-            self.log.info(f'att2cart result: {result}')
-        elif self.detach:
-            result = await self.skill_detach.wait_main()
-            self.log.info(f'detach result: {result}')
-            
+        try: 
+            if self.attach:
+                result = await self.skill_att2cart.wait_main()
+                self.log.info(f'att2cart result: {result}')
+            elif self.detach:
+                result = await self.skill_detach.wait_main()
+                self.log.info(f'detach result: {result}')
+        except RayaSkillAborted:
+            pass    
 
 
     async def finish(self):
