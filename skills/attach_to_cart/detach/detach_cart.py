@@ -159,7 +159,7 @@ class SkillDetachCart(RayaSkill):
                         'goal':GRIPPER_OPEN_POSITION,
                         'velocity':GRIPPER_VELOCITY,
                         'pressure':GRIPPER_OPEN_PRESSURE_CONST,
-                        'timeout':25.0
+                        'timeout':60.0
                     }, 
                     wait=True,
                 )
