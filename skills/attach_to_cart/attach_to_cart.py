@@ -116,9 +116,11 @@ class SkillAttachToCart(RayaFSMSkill):
                 target_distance=self.execute_args['target_distance'],
                 wait_target_time=30.0,
                 reverse=self.execute_args['reverse'],
-                max_x_error= 0.03, 
-                max_y_error= 0.03,
-                low_angular_velocity=law
+                max_x_error= 0.02, 
+                max_y_error= 0.02,
+                low_angular_velocity=law,
+                high_linear_velocity=0.2,
+                min_approach_distance=0.5
             )
         except RayaUnknownServerError as e:
             self.app.log.warn(f'///////////////')
@@ -160,21 +162,18 @@ class SkillAttachToCart(RayaFSMSkill):
             if time.time() - start_time > self.execute_args['wait_time_for_detection']:
                 break
             
-            if len(self.view_tags.keys()) == 0:
-                self.log.debug('No tags detected, waiting...')
-            else:
+            if len(self.view_tags.keys()) > 0:
                 self.log.debug('Tags detected')
                 break
             await self.sleep(0.1)
         
-        if len(self.view_tags.keys()) == 0:
-            wait_time = self.execute_args['wait_time_for_detection']
-            self.app.log.warn(f'No tags detected, waiting for {wait_time} secs...')
-            await self.sleep(wait_time)
-        
         tags = copy.copy(self.view_tags)
         if len(tags.keys()) == 0:
-            self.app.log.error('No tags detected, aborting...')
+            self.app.log.error(
+                'No tags detected were detected after '
+                f'{self.execute_args["wait_time_for_detection"]} seconds, '
+                'aborting...'
+            )
             self.abort(*ERROR_NO_TAGS_DETECTED)
 
         centerest_tag = None
