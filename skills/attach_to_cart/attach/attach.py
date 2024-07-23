@@ -345,6 +345,9 @@ class AttachToCart(RayaSkill):
 
         if abs(cmd_velocity) > MAX_MOVING_VELOCITY:
             cmd_velocity = MAX_MOVING_VELOCITY
+        if abs(cmd_velocity) < MIN_MOVING_VELOCITY:
+            cmd_velocity = MIN_MOVING_VELOCITY
+
         if not self.obstacle_detected:
             try:
                 await self.motion.set_velocity(
