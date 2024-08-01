@@ -52,7 +52,7 @@ class SkillDetachCart(RayaSkill):
     async def move_fowards(self):
         kp = VELOCITY_KP
         cmd_velocity = kp*self.average_distance
-        self.app.log.info(f'cmd_velocity {cmd_velocity}')
+        self.log.info(f'cmd_velocity {cmd_velocity}')
 
         if abs(cmd_velocity) > MAX_MOVING_VELOCITY:
             cmd_velocity = MAX_MOVING_VELOCITY
@@ -67,7 +67,7 @@ class SkillDetachCart(RayaSkill):
                 wait=True,
             )
         except Exception as error:
-            self.app.log.error(f'linear movement failed, error: {error}')
+            self.log.error(f'linear movement failed, error: {error}')
             self.abort(*ERROR_LINEAR_MOVEMENT_FAILED)
     
 

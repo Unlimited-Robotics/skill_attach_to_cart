@@ -35,7 +35,7 @@ class AttachToCart(RayaSkill):
         # and also the sum is less then average
         # and self.angle is above rotating..
 
-        self.app.log.debug(f'current state: {self.state}')
+        self.log.debug(f'current state: {self.state}')
 
         if (self.state == 'attach_verification'):
             return True
@@ -119,7 +119,7 @@ class AttachToCart(RayaSkill):
             self.setup_args['actual_desired_position']) < POSITION_ERROR_MARGIN: 
             self.gripper_state['close_to_actual_position'] = True
         else:
-            self.app.log.info((
+            self.log.info((
                 f'Attemps,{self.gripper_state["attempts"]}, '
                 f'final_position {gripper_result["final_position"]}'
             ))
@@ -142,7 +142,7 @@ class AttachToCart(RayaSkill):
         try:
             if abs(self.last_middle_srf / self.middle_srf) > \
                     OBSTACLE_DETECTED_RATIO:
-                self.app.log.debug((
+                self.log.debug((
                     f'obstacle_detected: {self.obstacle_detected}, '
                     f'ratio: {self.last_middle_srf / self.middle_srf}'
                 ))
@@ -150,13 +150,13 @@ class AttachToCart(RayaSkill):
             elif self.obstacle_detected:
                 if abs(self.last_middle_srf / self.middle_srf) <\
                         NON_OBSTACLE_DETECTED_RATIO:
-                    self.app.log.debug((
+                    self.log.debug((
                         f'obstacle_detected: {self.obstacle_detected}, '
                         f'ratio: {self.last_middle_srf / self.middle_srf}'
                     ))
                     self.obstacle_detected = False
         except Exception as error:
-                self.app.log.warn((
+                self.log.warn((
                     f'middle SRF not in use, '
                     f'obstacle_detection failed, error: {error}'
                 ))
@@ -184,12 +184,12 @@ class AttachToCart(RayaSkill):
                     )
       
         self.obstacle_index = self.obstacle_index + 1
-        self.app.log.error((
+        self.log.error((
             f'stop moving, obstacle detected {self.middle_srf} cm '
             f'from gary, index: {self.obstacle_index}'
         ))
         if self.obstacle_index > MAX_OBSTACLE_INDEX:
-            self.app.log.error(
+            self.log.error(
                 f'error, max obstacle index reached: {self.obstacle_index}'
             )
             if self.sound.is_playing():
@@ -218,7 +218,7 @@ class AttachToCart(RayaSkill):
                 wait=True, 
             )
         except Exception as error:
-            self.app.log.error(f'linear movement failed, error: {error}')
+            self.log.error(f'linear movement failed, error: {error}')
             self.abort(*ERROR_LINEAR_MOVEMENT_FAILED)
 
 
@@ -228,20 +228,20 @@ class AttachToCart(RayaSkill):
         
         if self.average_distance > self.last_average_distance:
             self.pushing_index += 1
-            self.app.log.warn((
+            self.log.warn((
                 f'cart seems to be pushed by gary, '
                 f'index: {self.pushing_index} '
                 f'av_dis: {self.average_distance}, '
                 f'last av_dis: {self.last_average_distance}'
             ))
         if self.pushing_index > MAX_PUSHING_INDEX:
-            self.app.log.error(f'cart pushed by gary {self.pushing_index} times')
+            self.log.error(f'cart pushed by gary {self.pushing_index} times')
             self.abort(*ERROR_CART_NOT_GETTING_CLOSER)
 
 
     async def _cart_max_distance_verification (self):
             if self.dl > CART_MAX_DISTANCE and self.dr > CART_MAX_DISTANCE:
-                self.app.log.error((
+                self.log.error((
                     f'cart is too far, distance: left: {self.dl} cm, '
                     f'right: {self.dr}'
                 ))
@@ -252,7 +252,7 @@ class AttachToCart(RayaSkill):
         index = 0
         while abs(self.angle) > MIN_STARTING_ANGLE and\
                 index < MAX_ANGLE_CORRECTION_ATTEMPTS:
-            self.app.log.info(f'major angle correction attempt: {index}')
+            self.log.info(f'major angle correction attempt: {index}')
             await self._timer_update()
             await self._timeout_verification()
             await self.adjust_angle()
@@ -264,7 +264,7 @@ class AttachToCart(RayaSkill):
 
     async def major_angle_identification (self):
         if abs(self.angle) > MIN_STARTING_ANGLE:
-            self.app.log.error(
+            self.log.error(
                 f'Starting angle too high: {self.angle}, adjust angle'
             )
             await self.major_angle_correction()
@@ -276,7 +276,7 @@ class AttachToCart(RayaSkill):
 
     async def _timeout_verification (self):
         if self.timer > self.timeout:
-            self.app.log.error(f'timeout reached: {self.timer} sec')
+            self.log.error(f'timeout reached: {self.timer} sec')
             self.abort(*ERROR_TIMEOUT_REACHED)
             self.state = 'finish'     
 
@@ -289,7 +289,7 @@ class AttachToCart(RayaSkill):
         while(True):
             timer = time.time() - start_time
             if timer > 2.0:
-                self.app.log.error(f'failed to read SRF values for {timer} sec')
+                self.log.error(f'failed to read SRF values for {timer} sec')
                 self.abort(*ERROR_SRF_READING_FAILED)
             await asyncio.sleep(0.01)
             self.middle_srf = 0
@@ -297,9 +297,9 @@ class AttachToCart(RayaSkill):
                 self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT] * 100.0
             srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT] * 100.0
             if(math.isnan(srf_right)):
-                self.app.log.error('nan value recived from srf_right')
+                self.log.error('nan value recived from srf_right')
             elif(math.isnan(srf_left)):
-                self.app.log.error('nan value recived from srf_left')
+                self.log.error('nan value recived from srf_left')
             else:
                 if srf_right > MAX_SRF_VALUE:
                     srf_right = MAX_SRF_VALUE
@@ -326,7 +326,7 @@ class AttachToCart(RayaSkill):
         self.delta = self.dl - self.dr
         self.angle = \
             math.atan2(self.delta,DISTANCE_BETWEEN_SRF_SENSORS)/math.pi * 180
-        self.app.log.info((
+        self.log.info((
             f'left:{self.dl}, '
             f'right:{self.dr}, '
             f'middle: {self.middle_srf} '
@@ -341,7 +341,7 @@ class AttachToCart(RayaSkill):
         self.log.warn('Moving backward')
         kp = VELOCITY_KP
         cmd_velocity = kp*self.average_distance
-        self.app.log.info(f'cmd_velocity {cmd_velocity}')
+        self.log.info(f'cmd_velocity {cmd_velocity}')
 
         if abs(cmd_velocity) > MAX_MOVING_VELOCITY:
             cmd_velocity = MAX_MOVING_VELOCITY
@@ -359,7 +359,7 @@ class AttachToCart(RayaSkill):
                     wait=False,
                 )
             except Exception as error:
-                self.app.log.error(f'linear movement failed, error: {error}')
+                self.log.error(f'linear movement failed, error: {error}')
                 self.abort(*ERROR_LINEAR_MOVEMENT_FAILED)
         else:
             await self.avoid_obstacle()
@@ -368,7 +368,7 @@ class AttachToCart(RayaSkill):
 
 
     async def attach(self):
-        self.app.log.info("stop moving, start attaching")
+        self.log.info("stop moving, start attaching")
 
         is_moving = self.motion.is_moving()
 
@@ -394,7 +394,7 @@ class AttachToCart(RayaSkill):
                     wait=True,
                 )
                 
-                self.app.log.debug(f'gripper result: {gripper_result}')
+                self.log.debug(f'gripper result: {gripper_result}')
 
                 await self.gripper_feedback_cb(gripper_result)
                 await self.gripper_state_classifier()
@@ -405,7 +405,7 @@ class AttachToCart(RayaSkill):
                     break
 
                 if self.gripper_state['position_reached'] == True:
-                    self.app.log.error(f'fail, cart gripper not attached')
+                    self.log.error(f'fail, cart gripper not attached')
                     self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
 
                 self.gripper_state['attempts']+=1
@@ -417,7 +417,7 @@ class AttachToCart(RayaSkill):
             await self.send_feedback({'cart_attached_success' : cart_attached})
 
         except Exception as error:
-                self.app.log.error(f'gripper fail error is: {error}'
+                self.log.error(f'gripper fail error is: {error}'
                                 F'error type: {type(error)}')
                 self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
                 self.state = 'finish'
@@ -443,16 +443,16 @@ class AttachToCart(RayaSkill):
                     wait=True
                 )
             except Exception as error:
-                self.app.log.error(f'rotation failed, error: {error}')
+                self.log.error(f'rotation failed, error: {error}')
                 self.abort(*ERROR_ROTATION_MOVEMENT_FAILED)
         else:
             await self.avoid_obstacle()
 
-        self.app.log.info("finish rotate")
+        self.log.info("finish rotate")
 
 
     async def cart_attachment_verification(self):
-        self.app.log.info('run cart_attachment_verification')
+        self.log.info('run cart_attachment_verification')
         verification_dl=self.dl
         verification_dr=self.dr
         try:
@@ -477,7 +477,7 @@ class AttachToCart(RayaSkill):
                 await asyncio.sleep(0.2)
 
         except Exception as error:
-            self.app.log.error(f'linear movement failed, error: {error}')
+            self.log.error(f'linear movement failed, error: {error}')
             self.abort(*ERROR_LINEAR_MOVEMENT_FAILED)
         self.state = 'finish'
 
@@ -514,11 +514,11 @@ class AttachToCart(RayaSkill):
                 'timeout_reached': False
             }
             
-            self.app.log.debug(f'gripper result: {gripper_result}')
+            self.log.debug(f'gripper result: {gripper_result}')
 
             
         except Exception as error:
-            self.app.log.error(
+            self.log.error(
                 f'gripper open to pre-grab position failed, Exception type: '
                 f'{type(error)}, Exception: {error}')
             self.abort(*ERROR_GRIPPER_FAILED)
@@ -534,7 +534,7 @@ class AttachToCart(RayaSkill):
 
 
     async def rotation_180(self):
-        self.app.log.info('Rotating 180 degree')
+        self.log.info('Rotating 180 degree')
         try:
             await self.motion.rotate(
                 angle = 180.0,
@@ -543,7 +543,7 @@ class AttachToCart(RayaSkill):
                 wait=True)
             
         except Exception as error:
-            self.app.log.error(f'180 rotation failed, error: {error}')
+            self.log.error(f'180 rotation failed, error: {error}')
             self.abort(*ERROR_ROTATION_MOVEMENT_FAILED)
 
 
@@ -592,7 +592,7 @@ class AttachToCart(RayaSkill):
 
     async def main(self):
 
-        self.app.log.info('SkillAttachToCart.main')
+        self.log.info('SkillAttachToCart.main')
 
         self.start_time = time.time()
         self.timer = self.start_time
@@ -649,14 +649,14 @@ class AttachToCart(RayaSkill):
 
     async def finish(self):
         cart_attached = self.gripper_state['cart_attached']
-        self.app.log.info((
+        self.log.info((
             f'cart attachment status is: {cart_attached}, '
             f'time to execute: {self.timer}'
         ))
         await self.send_feedback(cart_attached)
         # if self.gripper_state['cart_attached'] is False:
         #     self.abort(*ERROR_CART_NOT_ATTACHED)
-        self.app.log.info('SkillAttachToCart.finish')
+        self.log.info('SkillAttachToCart.finish')
         # await self.skill_apr2cart.execute_finish()
 
 ###############################################################################
@@ -692,4 +692,4 @@ class AttachToCart(RayaSkill):
                 )
 
         except Exception as e:
-            self.app.log.warning(f'Skipped playing sound, got error {e}')
+            self.log.warning(f'Skipped playing sound, got error {e}')

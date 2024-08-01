@@ -18,10 +18,8 @@ class RayaApplication(RayaApplicationBase):
             self.tag_size = self.tag_size[0]
         elif self.detach:
             await self.skill_detach.execute_setup({})
+            
         
-        
-
-    async def loop(self):
         # Correct bad parser arguments
         if self.attach:
             exectute_args = {
@@ -45,16 +43,33 @@ class RayaApplication(RayaApplicationBase):
                 callback_feedback=self.cb_skill_feedback,
                 wait=False
             )
-        
-        try: 
-            if self.attach:
+
+    async def loop(self):
+        if self.attach:
+            try:
                 result = await self.skill_att2cart.wait_main()
                 self.log.info(f'att2cart result: {result}')
-            elif self.detach:
+                
+                self.log.info('finishing att2cart')
+                res = await self.skill_att2cart.execute_finish()
+                self.log.info(f'att2cart finish result: {res}')
+            except RayaSkillAborted as e:
+                self.log.error(f'Skill aborted with error_code: {e.error_code}, error_msg: {e.error_msg}')
+            
+        elif self.detach:
+            try:
                 result = await self.skill_detach.wait_main()
                 self.log.info(f'detach result: {result}')
-        except RayaSkillAborted:
-            pass    
+
+                self.log.info('finishing detach')
+                res = await self.skill_att2cart.execute_finish()
+                self.log.info(f'detach finish result: {res}')
+            except RayaSkillAborted as e:
+                self.log.error(f'Skill aborted with error_code: {e.error_code}, error_msg: {e.error_msg}')
+            
+        while True:
+            await self.sleep(1)
+            self.log.debug(f'RayaApplication.loop')
 
 
     async def finish(self):
@@ -62,20 +77,9 @@ class RayaApplication(RayaApplicationBase):
 
 
     async def cb_skill_done(self, exception, result):
-        # self.log.info(f'cb_skill_done!!!!! exception: {type(exception)}')
-        self.log.info(f'cb_skill_done, result: {result}')
-        if exception is None:
-            if self.attach:
-                await self.skill_att2cart.execute_finish()
-            elif self.detach:
-                await self.skill_detach.execute_finish()
-            else:
-                self.log.warn('No skill to finish')
-        else: 
-            self.log.warn(
-                    'error occured while attaching, exception type: '
-                    f'{type(exception)} {exception}'
-                )
+        self.log.debug(
+            f'cb_skill_done, exception: {exception} result: {result}'
+        )
 
 
     async def cb_skill_feedback(self, feedback):
