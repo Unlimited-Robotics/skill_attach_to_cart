@@ -294,8 +294,8 @@ class AttachToCart(RayaSkill):
             await asyncio.sleep(0.01)
             self.middle_srf = 0
             srf_right = \
-                self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT] * 100.0
-            srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT] * 100.0
+                self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT]
+            srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT]
             if(math.isnan(srf_right)):
                 self.log.error('nan value recived from srf_right')
             elif(math.isnan(srf_left)):
