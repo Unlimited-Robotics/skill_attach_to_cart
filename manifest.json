@@ -2,7 +2,7 @@
     "name": "attach_to_cart",
     "description": "",
     "type": "skill",
-    "version": "3.0.0.dev",
+    "version": "3.0.0.dev1",
     "dependencies": {
         "pip": [],
         "skills": [
