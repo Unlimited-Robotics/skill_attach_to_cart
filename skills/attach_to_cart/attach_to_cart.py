@@ -2,7 +2,6 @@ import time
 
 from raya.skills import RayaFSMSkill
 from raya.tools.filesystem import create_dat_folder
-from raya.controllers.arms_controller import ArmsController
 from raya.controllers.motion_controller import MotionController
 from raya.controllers.sound_controller import SoundController
 from raya.controllers.sensors_controller import SensorsController
@@ -68,7 +67,6 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def setup(self):
-        self.arms:ArmsController = await self.enable_controller('arms')
         self.sensors:SensorsController = await self.enable_controller('sensors')
         self.motion:MotionController = await self.enable_controller('motion')
         self.sound:SoundController = await self.enable_controller('sound')

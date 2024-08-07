@@ -5,10 +5,10 @@ import eyed3
 
 from raya.skills import RayaSkill
 from raya.tools.filesystem import resolve_path, create_dat_folder
-from raya.controllers.arms_controller import ArmsController
 from raya.controllers.motion_controller import MotionController
 from raya.controllers.sound_controller import SoundController
 from raya.controllers.sensors_controller import SensorsController
+from raya.controllers.robot_skills_controller import RobotSkillsController
 from .constants import *
 
 
@@ -382,15 +382,13 @@ class AttachToCart(RayaSkill):
                     self.state = "finish"
                     break
 
-                gripper_result = await self.arms.specific_robot_command(
-                    name='cart/execute',
-                    parameters={
-                        'gripper':'cart',
-                        'goal':GRIPPER_CLOSE_POSITION,
-                        'velocity':GRIPPER_VELOCITY,
-                        'pressure':self.close_pressure,
-                        'timeout':GRIPPER_TIMEOUT
-                    }, 
+                gripper_result = await self.robot_skills.execute_skill(
+                    skill='cart_gripper_execute',
+                    hand='cart',
+                    goal=GRIPPER_CLOSE_POSITION,
+                    velocity=GRIPPER_VELOCITY,
+                    pressure=self.close_pressure,
+                    timeout=GRIPPER_TIMEOUT,
                     wait=True,
                 )
                 
@@ -493,18 +491,7 @@ class AttachToCart(RayaSkill):
 
         self.pre_loop_finish = True
         try:
-            # TODO: check this part
-            # gripper_result = await self.arms.specific_robot_command(
-            #     name='cart/execute',
-            #     parameters={
-            #         'gripper':'cart',
-            #         'goal':GRIPPER_OPEN_POSITION,
-            #         'velocity':GRIPPER_VELOCITY,
-            #         'pressure':GRIPPER_OPEN_PRESSURE_CONST,
-            #         'timeout':GRIPPER_TIMEOUT
-            #     }, 
-            #     wait=True,
-            # )
+            # TODO: check if the gripper should be closed again here
             gripper_result ={
                 'final_position': 1.0,
                 'final_pressure': 1.0,
@@ -582,10 +569,14 @@ class AttachToCart(RayaSkill):
 ###############################################################################
 
     async def setup(self):
-        self.arms:ArmsController = await self.enable_controller('arms')
-        self.sensors:SensorsController = await self.enable_controller('sensors')
-        self.motion:MotionController = await self.enable_controller('motion')
-        self.sound:SoundController = await self.enable_controller('sound')
+        self.robot_skills:RobotSkillsController = \
+            await self.enable_controller('robot_skills')
+        self.sensors:SensorsController = \
+            await self.enable_controller('sensors')
+        self.motion:MotionController = \
+            await self.enable_controller('motion')
+        self.sound:SoundController = \
+            await self.enable_controller('sound')
         ## create folder for audio
         create_dat_folder(AUDIO_PATH)
 

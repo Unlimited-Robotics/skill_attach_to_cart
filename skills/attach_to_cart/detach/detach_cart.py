@@ -3,7 +3,7 @@ import math
 import time
 
 from raya.skills import RayaSkill
-from raya.controllers.arms_controller import ArmsController
+from raya.controllers.robot_skills_controller import RobotSkillsController
 from raya.controllers.motion_controller import MotionController
 from raya.controllers.sensors_controller import SensorsController
 from .constants import *
@@ -152,15 +152,13 @@ class SkillDetachCart(RayaSkill):
                 if(self.gripper_state['attempts'] > MAX_ATTEMPTS):
                     break
 
-                gripper_result = await self.arms.specific_robot_command(
-                    name='cart/execute',
-                    parameters={
-                        'gripper':'cart',
-                        'goal':GRIPPER_OPEN_POSITION,
-                        'velocity':GRIPPER_VELOCITY,
-                        'pressure':GRIPPER_OPEN_PRESSURE_CONST,
-                        'timeout':60.0
-                    }, 
+                gripper_result = await self.robot_skills.execute_skill(
+                    skill='cart_gripper_execute',
+                    hand='cart',
+                    goal=GRIPPER_OPEN_POSITION,
+                    velocity=GRIPPER_VELOCITY,
+                    pressure=GRIPPER_OPEN_PRESSURE_CONST,
+                    timeout=60.0,
                     wait=True,
                 )
                 
@@ -285,8 +283,8 @@ class SkillDetachCart(RayaSkill):
 
 
     async def setup(self):
-        self.arms:ArmsController = \
-            await self.enable_controller('arms')
+        self.robot_skills:RobotSkillsController = \
+            await self.enable_controller('robot_skills')
         self.sensors:SensorsController = \
             await self.enable_controller('sensors')
         self.motion:MotionController = \
