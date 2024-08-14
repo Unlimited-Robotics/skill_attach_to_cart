@@ -442,8 +442,9 @@ class SkillAttachToCart(RayaSkill):
                     break
 
                 if self.gripper_state['position_reached'] == True:
-                    self.log.error(f'fail, cart gripper not attached')
-                    self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+                    self.log.warn(f'cart might not be attached')
+                    self.state = 'attach_verification'
+                    break
 
                 self.gripper_state['attempts']+=1
                 if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION and self.gripper_state['attempts'] < MAX_ATTEMPTS -1:
