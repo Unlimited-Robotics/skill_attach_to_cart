@@ -63,7 +63,7 @@ class SkillAttachToCart(RayaSkill):
             await self.read_srf_values()
             await self.calculate_distance_parameters()
             await self._cart_max_distance_verification()
-            await self.lidar_obstacle_detection()
+            # await self.lidar_obstacle_detection()
             
             ### Idetify which state you are
             await self.state_classifier()
