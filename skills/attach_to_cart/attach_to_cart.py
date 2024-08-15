@@ -1,4 +1,5 @@
 import time
+import copy
 
 from raya.skills import RayaFSMSkill
 from raya.tools.filesystem import create_dat_folder
@@ -6,6 +7,9 @@ from raya.controllers.motion_controller import MotionController
 from raya.controllers.sound_controller import SoundController
 from raya.controllers.sensors_controller import SensorsController
 from raya.controllers.robot_skills_controller import RobotSkillsController
+from raya.controllers.cameras_controller import CamerasController
+from raya.controllers.cv_controller import CVController
+from raya.handlers.cv.detectors.tags_detector_handler import TagsDetectorHandler
 from raya.exceptions import RayaUnknownServerError
 from raya.skills.skill import RayaSkillHandler
 
@@ -81,10 +85,10 @@ class SkillAttachToCart(RayaFSMSkill):
         create_dat_folder(AUDIO_PATH)
         
         i_time = time.time()
-        self.log.info('Registering AttachToCart Skill...')
+        self.log.debug('Registering AttachToCart Skill...')
         self.attach:RayaSkillHandler = self.register_skill(AttachToCart)
         await self.attach.execute_setup(self.setup_args)
-        self.log.info(f'AttachToCart setup took:{time.time() - i_time} seconds')
+        self.log.debug(f'AttachToCart setup took:{time.time() - i_time} seconds')
 
     
     async def finish(self):
@@ -127,9 +131,9 @@ class SkillAttachToCart(RayaFSMSkill):
             self.log.warn(f'///////////////')
             self.log.warn(f'Skill Finished:' )
             self.log.warn(f'///////////////')
-            self.log.info(f'X Error: {result[0]}')
-            self.log.info(f'Y Error: {result[1]}')
-            self.log.info(f'Angle Error: {result[2]}') 
+            self.log.debug(f'X Error: {result[0]}')
+            self.log.debug(f'Y Error: {result[1]}')
+            self.log.debug(f'Angle Error: {result[2]}') 
 
 
     async def cb_feedback_skill(self, 
@@ -149,48 +153,6 @@ class SkillAttachToCart(RayaFSMSkill):
         self.log.debug(f'----------------------')
 
 
-    async def select_best_tag(self):
-        self.app.log.info('Selecting a tag...')
-        start_time = time.time()
-        while True:
-            if time.time() - start_time > self.execute_args['wait_time_for_detection']:
-                break
-            
-            if len(self.view_tags.keys()) > 0:
-                self.log.debug('Tags detected')
-                break
-            await self.sleep(0.1)
-        
-        tags = copy.copy(self.view_tags)
-        if len(tags.keys()) == 0:
-            self.app.log.error(
-                'No tags detected were detected after '
-                f'{self.execute_args["wait_time_for_detection"]} seconds, '
-                'aborting...'
-            )
-            self.abort(*ERROR_NO_TAGS_DETECTED)
-
-        centerest_tag = None
-        for tag in tags:
-            self.log.warn(f'Tag detected: {tag}')
-            if centerest_tag is None:
-                centerest_tag = tag
-            else:
-                if abs(tags[tag].y) < abs(tags[centerest_tag].y):
-                    centerest_tag = tag
-        
-        self.log.info('Disabling model...')
-        await self.cv.disable_model(model_obj=self.detector)
-        self.log.info('Disabling cameras...')
-        for camera in self.sources:
-            await self.cameras.disable_camera(camera_name=camera)
-        
-        if centerest_tag is None:
-            self.abort(*ERROR_NO_TAGS_DETECTED)
-        self.app.log.info(f'Selected tag: {centerest_tag}')
-        return centerest_tag
-
-
     def callback_all_predictions(self, detections, image):
         if detections:
             for tag in detections:
@@ -201,7 +163,7 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def select_best_tag(self):
-        self.app.log.info('Selecting a tag...')
+        self.app.log.debug('Selecting a tag...')
         start_time = time.time()
         while True:
             if time.time() - start_time > self.execute_args['wait_time_for_detection']:
@@ -212,7 +174,7 @@ class SkillAttachToCart(RayaFSMSkill):
                 break
             await self.sleep(0.1)
         
-        tags = copy.copy(self.view_tags)
+        tags = copy.deepcopy(self.view_tags)
         if len(tags.keys()) == 0:
             self.app.log.error(
                 'No tags detected were detected after '
@@ -230,15 +192,15 @@ class SkillAttachToCart(RayaFSMSkill):
                 if abs(tags[tag].y) < abs(tags[centerest_tag].y):
                     centerest_tag = tag
         
-        self.log.info('Disabling model...')
+        self.log.debug('Disabling model...')
         await self.cv.disable_model(model_obj=self.detector)
-        self.log.info('Disabling cameras...')
+        self.log.debug('Disabling cameras...')
         for camera in self.sources:
             await self.cameras.disable_camera(camera_name=camera)
         
         if centerest_tag is None:
             self.abort(*ERROR_NO_TAGS_DETECTED)
-        self.app.log.info(f'Selected tag: {centerest_tag}')
+        self.app.log.debug(f'Selected tag: {centerest_tag}')
         return centerest_tag
 
 
@@ -266,23 +228,23 @@ class SkillAttachToCart(RayaFSMSkill):
         self.app.log.debug(f'Used sources: {self.sources}')
         self.app.log.debug(f'Used tags: {self.execute_args["target_tags"]}')
         
-        self.app.log.info('Enabling cameras...')
+        self.app.log.debug('Enabling cameras...')
         for camera in self.sources:
             await self.cameras.enable_camera(camera_name=camera)
         
-        self.app.log.info('Enabling cv...')
+        self.app.log.debug('Enabling cv...')
         MODEL_PARAMS['tag_size'] = self.execute_args['tag_size']
         
         # Enable detector
         start_time = time.time()
-        self.log.info('Enabling model...')
+        self.log.debug('Enabling model...')
         self.detector: TagsDetectorHandler = await self.cv.enable_model(
                 model='detector',type='tag',
-                name='apriltags', 
+                name='apriltags_cpp', 
                 source=self.sources[0],
                 model_params = MODEL_PARAMS
             )
-        self.log.info(f'Model enabled {str(time.time()-start_time)}')
+        self.log.debug(f'Model enabled {str(time.time()-start_time)}')
         
         # Create listener
         self.view_tags = dict()
@@ -294,7 +256,7 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def enter_SEARCHING_TAGS(self):
-        self.app.log.info('Entered SEARCHING_TAGS state')
+        self.app.log.debug('Entered SEARCHING_TAGS state')
         self.selected_tag = await self.select_best_tag()
         
 
@@ -324,8 +286,8 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def enter_END(self):
-        self.log.info('Entered END state')
-        self.log.info('RayaSkill.finish')
+        self.log.debug('Entered END state')
+        self.log.debug('RayaSkill.finish')
 
 
 ###############################################################################

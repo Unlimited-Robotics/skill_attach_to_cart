@@ -42,7 +42,7 @@ class SkillDetachCart(RayaSkill):
         self.angle  = math.atan2(
             self.delta,DISTANCE_BETWEEN_SRF_SENSORS)/math.pi * 180
         self.average_distance = (self.dl + self.dr)/2
-        # self.log.info((
+        # self.log.debug((
         #     f'left:{self.dl}, '
         #     f'right:{self.dr}, '
         #     f'angle: {self.angle}'
@@ -52,7 +52,7 @@ class SkillDetachCart(RayaSkill):
     async def move_fowards(self):
         kp = VELOCITY_KP
         cmd_velocity = kp*self.average_distance
-        self.log.info(f'cmd_velocity {cmd_velocity}')
+        self.log.debug(f'cmd_velocity {cmd_velocity}')
 
         if abs(cmd_velocity) > MAX_MOVING_VELOCITY:
             cmd_velocity = MAX_MOVING_VELOCITY
@@ -79,7 +79,7 @@ class SkillDetachCart(RayaSkill):
 
 
     async def cart_detachment_verification(self):
-        self.log.info('run cart_detachment_verification')
+        self.log.debug('run cart_detachment_verification')
         verification_dl=self.dl
         verification_dr=self.dr
         try:
@@ -139,7 +139,7 @@ class SkillDetachCart(RayaSkill):
 
 
     async def detach(self):
-        self.log.info("detaching cart")
+        self.log.debug("detaching cart")
 
         is_moving = self.motion.is_moving()
 
@@ -217,7 +217,7 @@ class SkillDetachCart(RayaSkill):
                 abs(gripper_result['final_position']) < POSITION_ERROR_MARGIN: 
             self.gripper_state['close_to_actual_position'] = True
         else:
-            self.log.info((
+            self.log.debug((
                 f'Attemps,{self.gripper_state["attempts"]}, '
                 f'final_position {gripper_result["final_position"]}'
             ))
@@ -294,7 +294,7 @@ class SkillDetachCart(RayaSkill):
     async def main(self):
         ### approach state
 
-        self.log.info('SkillDetachCart.main')
+        self.log.debug('SkillDetachCart.main')
         await self.set_to_default()
 
         self.start_time = time.time()
@@ -313,7 +313,7 @@ class SkillDetachCart(RayaSkill):
 
     async def finish(self):
         cart_detached = self.gripper_state['cart_detached']
-        self.log.info((
+        self.log.debug((
             f'cart detachment status is: {not cart_detached}, '
             f'time to execute: {self.timer}'
         ))
@@ -321,4 +321,4 @@ class SkillDetachCart(RayaSkill):
             'application finished, cart detachment is: '
             f'{not cart_detached}'
         ))
-        self.log.info('SkillDetachCart.finish')
+        self.log.debug('SkillDetachCart.finish')
