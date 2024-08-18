@@ -24,7 +24,7 @@ class SkillDetachCart(RayaSkill):
     }
     
     DEFAULT_EXECUTE_ARGS = {
-        'move_fowards': True,
+        'move_fowards': False,
     }
 
     REQUIREDT_EXECUTE_ARGS = {}
