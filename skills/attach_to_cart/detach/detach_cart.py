@@ -24,7 +24,7 @@ class SkillDetachCart(RayaSkill):
     }
     
     DEFAULT_EXECUTE_ARGS = {
-        'move_fowards': False,
+        'move_fowards': True,
     }
 
     REQUIREDT_EXECUTE_ARGS = {}
@@ -161,32 +161,14 @@ class SkillDetachCart(RayaSkill):
                     timeout=60.0,
                     wait=True,
                 )
-                
-
-                self.log.debug(f'gripper result: {gripper_result}')
-                await self.gripper_feedback_cb(gripper_result)
-
+                await self.send_feedback(gripper_result)
                 await self.gripper_state_classifier()
     
-                cart_detached = gripper_result['success']
-
+                cart_detached = gripper_result[0]
                 if cart_detached:
                     break
-                    
-                    
-                self.gripper_state['attempts']+=1
-                if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION:
-                   await self.vibrate()
 
-                await self._timer_update()
-                await self._timeout_verification()
-                await self.read_srf_values()
-                await self.calculate_distance_parameters()
-
-            await self.send_feedback(gripper_result)
-            await self.send_feedback({
-                'cart_detached_success' : not cart_detached
-            })
+            self.gripper_state['cart_detached'] = True
             if self.execute_args['move_fowards']:
                 await self.cart_detachment_verification()
 
@@ -196,7 +178,6 @@ class SkillDetachCart(RayaSkill):
                     f'error type: {type(error)}'
                 ))
                 self.abort(*ERROR_GRIPPER_DETACHMENT_FAILED)
-                self.state = 'finish'
 
 
     async def gripper_feedback_cb(self, gripper_result):
@@ -314,7 +295,7 @@ class SkillDetachCart(RayaSkill):
     async def finish(self):
         cart_detached = self.gripper_state['cart_detached']
         self.log.debug((
-            f'cart detachment status is: {not cart_detached}, '
+            f'cart detachment status is: {cart_detached}, '
             f'time to execute: {self.timer}'
         ))
         await self.send_feedback((
