@@ -394,21 +394,21 @@ class AttachToCart(RayaSkill):
                 
                 self.log.debug(f'gripper result: {gripper_result}')
 
-                await self.gripper_feedback_cb(gripper_result)
+                # await self.gripper_feedback_cb(gripper_result)
                 await self.gripper_state_classifier()
     
-                cart_attached = self.gripper_state['cart_attached']
+                cart_attached = gripper_result[0]
                 if cart_attached:
                     self.state = 'attach_verification'
                     break
 
-                if self.gripper_state['position_reached'] == True:
-                    self.log.error(f'fail, cart gripper not attached')
-                    self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
+                # if self.gripper_state['position_reached'] == True:
+                #     self.log.error(f'fail, cart gripper not attached')
+                #     self.abort(*ERROR_GRIPPER_ATTACHMENT_FAILED)
 
-                self.gripper_state['attempts']+=1
-                if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION:
-                   await self.vibrate()
+                # self.gripper_state['attempts']+=1
+                # if self.gripper_state['attempts'] > ATTEMPTS_BEFORE_VIBRATION:
+                #    await self.vibrate()
 
 
             await self.send_feedback(gripper_result)

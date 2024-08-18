@@ -280,8 +280,6 @@ class SkillAttachToCart(RayaFSMSkill):
             self.log.error(f'///////////////')
             self.log.error(f'Attach Finished:' )
             self.log.error(f'///////////////')
-            self.log.error(f'X Error: {result[0]}')
-            self.log.error(f'Y Error: {result[1]}')
         self.log.debug('Executed ATTACH state')
 
 
