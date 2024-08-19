@@ -164,7 +164,7 @@ class SkillDetachCart(RayaSkill):
                 await self.send_feedback(gripper_result)
                 await self.gripper_state_classifier()
     
-                cart_detached = gripper_result[0]
+                cart_detached = gripper_result[1] == 1
                 if cart_detached:
                     break
 
