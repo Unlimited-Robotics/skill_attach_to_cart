@@ -233,8 +233,8 @@ class SkillDetachCart(RayaSkill):
 
 
     async def setup(self):
-        self.arms:ArmsController = \
-            await self.enable_controller('arms')
+        # self.arms:ArmsController = \
+        #     await self.enable_controller('arms')
         self.sensors:SensorsController = \
             await self.enable_controller('sensors')
         self.motion:MotionController = \

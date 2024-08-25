@@ -65,7 +65,7 @@ class SkillAttachToCart(RayaFSMSkill):
 
 
     async def setup(self):
-        self.arms:ArmsController = await self.enable_controller('arms')
+        # self.arms:ArmsController = await self.enable_controller('arms')
         self.sensors:SensorsController = await self.enable_controller('sensors')
         self.motion:MotionController = await self.enable_controller('motion')
         self.sound:SoundController = await self.enable_controller('sound')
