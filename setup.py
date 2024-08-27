@@ -40,5 +40,10 @@ setup(
     python_requires=">=3.8",
     download_url='',
     keywords=['skills', 'unlimited-robotics', 'gary'],
-    install_requires=SKILLS
+    install_requires=SKILLS,
+    
+    package_data={
+        'skills.attach_to_cart.pre_defined_audio': ['*'],
+    },
+    include_package_data=True,
 )
