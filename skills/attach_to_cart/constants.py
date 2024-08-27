@@ -12,6 +12,8 @@ ERROR_CART_NOT_ACCESSABLE = (0, 'cart is too far or not accessable,')
 ERROR_OBSTACLE_IDENTIFIED = (9,'obstacle detected behind gary')
 ERROR_SRF_READING_FAILED = (10,'fail to read SRF value OR got only nan values')
 
+ERROR_GRIPPER_DETACHMENT_FAILED = (11,'gripper detachment failed')
+
 ###### Rotating
 
 ROTATING_DISTANCE = 30.0
@@ -38,6 +40,7 @@ ATACHING_ANGLE_MAX = 2.0
 MAX_MOVING_VELOCITY = 0.2
 VELOCITY_KP = 0.0015
 VERIFICATION_VELOCITY = 0.0001
+DURATION_DETTACHING = 6.0
 
 ###### Geometric parameters
 DISTANCE_BETWEEN_SRF_SENSORS = 23.5

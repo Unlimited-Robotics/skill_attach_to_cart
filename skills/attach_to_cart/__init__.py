@@ -1,1 +1,2 @@
 from skills.attach_to_cart.attach_to_cart import SkillAttachToCart
+from skills.attach_to_cart.detach_from_cart import SkillDetachFromCart
