@@ -19,7 +19,7 @@ from raya.enumerations import LEDS_EXECUTION_CONTROL
 from .constants import *
 
 
-class AttachToCart(RayaSkill):
+class SkillAttachCart(RayaSkill):
 
     DEFAULT_SETUP_ARGS = {
         'timeout' : FULL_APP_TIMEOUT,
