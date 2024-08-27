@@ -1,4 +1,3 @@
-import asyncio
 import math
 import time
 
@@ -7,6 +6,7 @@ from raya.controllers.robot_skills_controller import RobotSkillsController
 from raya.controllers.motion_controller import MotionController
 from raya.controllers.sensors_controller import SensorsController
 from raya.controllers.robot_skills_controller import RobotSkillsController
+
 from .constants import *
 
 
@@ -14,19 +14,67 @@ class SkillDetachCart(RayaSkill):
 
 
     DEFAULT_SETUP_ARGS = {
-
         'timeout' : FULL_APP_TIMEOUT,
-
     }
-    REQUIRED_SETUP_ARGS = {
-
-    }
+    
+    REQUIRED_SETUP_ARGS = {}
     
     DEFAULT_EXECUTE_ARGS = {
         'move_fowards': False,
     }
 
-    REQUIREDT_EXECUTE_ARGS = {}
+    REQUIRED_EXECUTE_ARGS = {}
+
+###############################################################################
+##################### setup - main - finish ###################################
+###############################################################################
+
+
+    async def setup(self):
+        self.log.debug('SkillDetachCart.setup')
+        self.robot_skills:RobotSkillsController = \
+            await self.enable_controller('robot_skills')
+        self.sensors:SensorsController = \
+            await self.enable_controller('sensors')
+        self.motion:MotionController = \
+            await self.enable_controller('motion')
+        self.robot_skills:RobotSkillsController = \
+            await self.enable_controller('robot_skills')
+
+
+    async def main(self):
+        ### approach state
+
+        self.log.debug('SkillDetachCart.main')
+        await self.set_to_default()
+
+        self.start_time = time.time()
+        self.timer = self.start_time
+        await self._timer_update()
+        await self._timeout_verification()
+
+        await self.read_srf_values()
+        await self.calculate_distance_parameters()
+        await self.detach()
+        await self.finish()
+        
+
+    async def finish(self):
+        cart_detached = self.gripper_state['cart_detached']
+        self.log.debug((
+            f'cart detachment status is: {cart_detached}, '
+            f'time to execute: {self.timer}'
+        ))
+        await self.send_feedback((
+            'application finished, cart detachment is: '
+            f'{not cart_detached}'
+        ))
+        self.log.debug('SkillDetachCart.finish')
+
+
+###############################################################################
+########################### Helpers ###########################################
+###############################################################################
 
 
     async def calculate_distance_parameters(self):
@@ -44,10 +92,9 @@ class SkillDetachCart(RayaSkill):
 
 
     async def gripper_state_classifier(self):
-        if (self.gripper_state['result_code'] == 3):
+        if self.gripper_state['result_code'] == 3:
             self.gripper_state['cart_attached'] = True
-
-        elif (self.gripper_state['result_code'] == 1):
+        elif self.gripper_state['result_code'] == 1:
             self.gripper_state['cart_attached'] = False
 
 
@@ -66,7 +113,7 @@ class SkillDetachCart(RayaSkill):
             )
             
             while (self.motion.is_moving()):
-                await asyncio.sleep(0.2)
+                await self.sleep(0.2)
                 await self.read_srf_values()
                 dl_delta = abs(verification_dl - self.dl)
                 dr_delta = abs(verification_dr - self.dr)
@@ -88,18 +135,18 @@ class SkillDetachCart(RayaSkill):
             await self.motion.set_velocity(
                 x_velocity = VERIFICATION_VELOCITY,
                 y_velocity = 0.0,
-                angular_velocity=0.0,
-                duration=0.5,
-                enable_obstacles=False,
-                wait=True, 
+                angular_velocity = 0.0,
+                duration = 0.5,
+                enable_obstacles = False,
+                wait = True, 
             )
             await self.motion.set_velocity(
                 x_velocity = -VERIFICATION_VELOCITY,
                 y_velocity = 0.0,
-                angular_velocity=0.0,
-                duration=0.3,
-                enable_obstacles=False,
-                wait=True, 
+                angular_velocity = 0.0,
+                duration = 0.3,
+                enable_obstacles = False,
+                wait = True, 
             )
         except Exception as error:
             self.log.error(f'linear movement failed, error: {error}')
@@ -108,29 +155,26 @@ class SkillDetachCart(RayaSkill):
 
     async def detach(self):
         self.log.debug("detaching cart")
-
         is_moving = self.motion.is_moving()
-
         if (is_moving):
             await self.motion.cancel_motion()
         try:
-
             while(True):
                 await self.sleep(1.0)
                 if(self.gripper_state['attempts'] > MAX_ATTEMPTS):
                     break
 
-                gripper_result = await self.robot_skills.execute_skill(
-                                skill='cart_gripper_execute',
-                                hand='cart',
-                                goal= GRIPPER_CLOSE_POSITION,
-                                velocity=GRIPPER_VELOCITY,
-                                pressure= GRIPPER_OPEN_PRESSURE_CONST,
-                                timeout=GRIPPER_TIMEOUT,
-                                wait=True,  
-                            )
+                gripper_result = \
+                    await self.robot_skills.execute_skill(
+                        skill='cart_gripper_execute',
+                        hand='cart',
+                        goal= GRIPPER_CLOSE_POSITION,
+                        velocity=GRIPPER_VELOCITY,
+                        pressure= GRIPPER_OPEN_PRESSURE_CONST,
+                        timeout=GRIPPER_TIMEOUT,
+                        wait=True,  
+                    )
                 
-
                 self.log.debug(f'gripper result: {gripper_result}')
                 await self.gripper_feedback_cb(gripper_result)
 
@@ -151,17 +195,6 @@ class SkillDetachCart(RayaSkill):
                 ))
                 self.abort(*ERROR_GRIPPER_DETACHMENT_FAILED)
 
-
-    async def gripper_feedback_cb(self, success, result_code, result_str, final_position, final_pressure):
-        
-        ## INPUT: gripper feednack result from raya
-        ## function updates local list of parameters which define the gripper state
-        self.gripper_state['result_code'] = result_code
-        self.gripper_state['final_position'] =  final_position
-        self.gripper_state['final_pressure'] = final_pressure
-        self.gripper_state['success'] = success
-        self.log.debug(f'gripper_state: {self.gripper_state}')
-
                
     async def _timer_update(self):
         self.timer = time.time() - self.start_time
@@ -170,12 +203,12 @@ class SkillDetachCart(RayaSkill):
     async def _timeout_verification (self):
         if self.timer > self.timeout:
             self.log.error(f'timeout reached: {self.timer} sec')
-            self.abort(*ERROR_TIMEOUT_REACHED)
             self.state = 'finish'
+            self.abort(*ERROR_TIMEOUT_REACHED)
 
 
     async def read_srf_values(self):
-        ## read srf value with the index, the srf of the cart is 5 and 2
+        ''' read srf value with the index, the srf of the cart is 5 and 2 '''
         start_time = time.time()
         while(True):
             timer = time.time() - start_time
@@ -183,14 +216,15 @@ class SkillDetachCart(RayaSkill):
                 self.log.error(f'failed to read SRF values for {timer} sec')
                 self.error_type = ERROR_SRF_READING_FAILED
                 self.state = 'finish'
-            await asyncio.sleep(0.01)
-            srf_right = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT]*SRF_M2CM
-            srf_left = self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT]*SRF_M2CM
+            await self.sleep(0.01)
+            srf_right = \
+                self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_RIGHT]*SRF_M2CM
+            srf_left = \
+                self.sensors.get_sensor_value('srf')[SRF_SENSOR_ID_LEFT]*SRF_M2CM
             if( math.isnan(srf_right) and not math.isnan(srf_left)):
                 self.log.error('nan value recived from srf')
 
             if(not math.isnan(srf_right) and not math.isnan(srf_left)):
-
                 if srf_right > MAX_SRF_VALUE:
                     srf_right = MAX_SRF_VALUE
                 if srf_left > MAX_SRF_VALUE:
@@ -220,45 +254,29 @@ class SkillDetachCart(RayaSkill):
         }
 
 
-    async def setup(self):
-        self.robot_skills:RobotSkillsController = \
-            await self.enable_controller('robot_skills')
-        self.sensors:SensorsController = \
-            await self.enable_controller('sensors')
-        self.motion:MotionController = \
-            await self.enable_controller('motion')
-        self.robot_skills:RobotSkillsController = \
-            await self.enable_controller('robot_skills')
+###############################################################################
+############################# feedback & callback #############################
+###############################################################################
 
 
-    async def main(self):
-        ### approach state
+    async def gripper_feedback_cb(self,
+            success,
+            result_code,
+            result_str,
+            final_position,
+            final_pressure
+        ):
+        ''' 
+        INPUT: gripper feednack result from raya
+        function updates local list of parameters which define the gripper state
+        '''
+        self.gripper_state['result_code'] = result_code
+        self.gripper_state['final_position'] =  final_position
+        self.gripper_state['final_pressure'] = final_pressure
+        self.gripper_state['success'] = success
+        self.log.debug(f'gripper_state: {self.gripper_state}')
 
-        self.log.debug('SkillDetachCart.main')
-        await self.set_to_default()
 
-        self.start_time = time.time()
-        self.timer = self.start_time
-        await self._timer_update()
-        await self._timeout_verification()
-
-        await self.read_srf_values()
-
-        await self.calculate_distance_parameters()
-        
-        await self.detach()
-
-        await self.finish()
-        
-
-    async def finish(self):
-        cart_detached = self.gripper_state['cart_detached']
-        self.log.debug((
-            f'cart detachment status is: {cart_detached}, '
-            f'time to execute: {self.timer}'
-        ))
-        await self.send_feedback((
-            'application finished, cart detachment is: '
-            f'{not cart_detached}'
-        ))
-        self.log.debug('SkillDetachCart.finish')
+###############################################################################
+###############################################################################
+###############################################################################

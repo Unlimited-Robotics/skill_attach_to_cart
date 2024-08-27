@@ -1,11 +1,10 @@
 ###### ERRORS
 
-ERROR_GRIPPER_FAILED = (7,'gripper opening failed')
-ERROR_LINEAR_MOVEMENT_FAILED = (5,
-                'gary linear motion command failed')
-ERROR_GRIPPER_DETACHMENT_FAILED = (3,'gripper detachment failed')
 ERROR_STILL_ATTACHED = (1,'cart still attached')
-ERROR_TIMEOUT_REACHED = (2,f'loop timeout reached')
+ERROR_TIMEOUT_REACHED = (2,'loop timeout reached')
+ERROR_GRIPPER_DETACHMENT_FAILED = (3,'gripper detachment failed')
+ERROR_LINEAR_MOVEMENT_FAILED = (5,'gary linear motion command failed')
+ERROR_GRIPPER_FAILED =  (7,'gripper opening failed')
 ERROR_SRF_READING_FAILED = (10,'fail to read SRF value OR got only nan values')
 
 
