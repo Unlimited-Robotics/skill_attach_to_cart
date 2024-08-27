@@ -1,0 +1,2 @@
+include README.md
+recursive-include skills/attach_to_cart/pre_defined_audio *
