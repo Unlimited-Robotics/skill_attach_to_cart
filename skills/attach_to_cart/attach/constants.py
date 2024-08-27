@@ -3,8 +3,7 @@
 ERROR_CART_NOT_GETTING_CLOSER = (8,'attach failed, cart pushed')
 ERROR_GRIPPER_FAILED = (7,'gripper opening failed')
 ERROR_ROTATION_MOVEMENT_FAILED = (6,'rotation motion command failed')
-ERROR_LINEAR_MOVEMENT_FAILED = (5,
-                'gary linear motion command failed')
+ERROR_LINEAR_MOVEMENT_FAILED = (5, 'gary linear motion command failed')
 ERROR_GRIPPER_ATTACHMENT_FAILED = (3,'gripper attachment failed')
 ERROR_CART_NOT_ATTACHED = (1,'cart was not attached')
 ERROR_TIMEOUT_REACHED = (2,f'loop timeout reached')
@@ -37,6 +36,7 @@ ATACHING_ANGLE_MAX = 2.0
 ###### linear movement
 
 MAX_MOVING_VELOCITY = 0.2
+MIN_MOVING_VELOCITY = 0.00001
 VELOCITY_KP = 0.0015
 VERIFICATION_VELOCITY = 0.0001
 
