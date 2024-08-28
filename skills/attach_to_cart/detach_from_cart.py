@@ -49,7 +49,8 @@ class SkillDetachFromCart(RayaSkill):
                 self.log.debug(f'Gripper result: {gripper_result}')
                 if gripper_result[0] == 0:
                     self.log.debug('Cart detached successfully')
-                else:                    
+                    break
+                else:
                     self.log.debug('Detach Failed, retrying...')
             except Exception as e:
                 self.log.error(f'Error opening gripper: {e}')
