@@ -278,7 +278,7 @@ class SkillAttachToCart(RayaSkill):
         upper_distance = min(self.average_distance/100 + 0.2, 0.6)
         self.obstacle_detected = self.lidar.check_obstacle(
             lower_angle=-40, upper_angle=40, upper_distance=upper_distance)
-        self.show_debug(f'self.obstacle_detected {self.obstacle_detected}')
+        self.log.warn(f'self.obstacle_detected {self.obstacle_detected}')
 
 
     async def _avoid_obstacle(self):
@@ -287,11 +287,13 @@ class SkillAttachToCart(RayaSkill):
         # after MAX_OBSTACLE_INDEX times of identification, the function abort the skill
 
         self.obstacle_index = self.obstacle_index + 1
-        self.show_debug(
-            f'stop moving, obstacle detected, index: {self.obstacle_index}')
+        self.log.warn(
+            f'stop moving, obstacle detected, index: {self.obstacle_index}'
+        )
         if self.obstacle_index > MAX_OBSTACLE_INDEX:
             self.show_debug(
-                f'error, max obstacle index reached: {self.obstacle_index}')
+                f'error, max obstacle index reached: {self.obstacle_index}'
+            )
             # if self.sound.is_playing():
             #     self.sound.cancel_sound()
             self.error_type = ERROR_OBSTACLE_IDENTIFIED
@@ -579,11 +581,13 @@ class SkillAttachToCart(RayaSkill):
             try:
                 await self.motion.rotate(
                     angle=max(
-                        abs(self.angle) * ROTATION_KP, MIN_ROTATION_ANGLE_STEP
+                        abs(self.angle) * ROTATION_KP, 
+                        MIN_ROTATION_ANGLE_STEP
                     ),
                     angular_speed=self.sign * ROTATING_ANGULAR_SPEED,
                     enable_obstacles=False,
-                    wait=True)
+                    wait=True
+                )
             except Exception as error:
                 self.show_debug(f'rotation failed, error: {error}')
                 self.error_type = ERROR_ROTATION_MOVEMENT_FAILED
