@@ -65,7 +65,7 @@ class SkillDetachFromCart(RayaSkill):
                 wait = True
             )
         except RayaMotionException as e:
-            self.log.debug(f'Error moving forwards: {type(e)}')
+            self.log.warn(f'Error moving forwards: {type(e)}')
         else:
             self.log.debug('Moved Forwards')
 
