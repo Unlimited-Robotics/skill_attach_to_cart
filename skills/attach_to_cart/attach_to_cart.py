@@ -18,27 +18,35 @@ from raya.tools.filesystem import resolve_path, create_dat_folder, check_file_ex
 class SkillAttachToCart(RayaSkill):
 
     DEFAULT_SETUP_ARGS = {
-
         'timeout' : FULL_APP_TIMEOUT,
-        '180_rotating': DEFUALT_ROTATING_180,
+        '180_rotating': DEFAULT_ROTATING_180,
         'actual_desired_position': GRIPPER_ACTUAL_DESIRED_POSITION,
         'reverse_beeping_alert': REVERSE_BEEPING_ALERT,
         'close_pressure': GRIPPER_CLOSE_PRESSURE_CONST,
-            }
-    REQUIRED_SETUP_ARGS = {
-         
+        'leds_interactions': DEFAULT_LEDS_INTERACTIONS
     }
+    
+    REQUIRED_SETUP_ARGS = {}
+    
+    DEFAULT_EXEC_ARGS = {}
+    
+    REQUIRED_EXEC_ARGS = {}
+
+    
 ###############################################################################
 ##################### setup - main - finish ###################################
 ###############################################################################
 
     async def setup(self):
+        self.leds_interactions = self.setup_args['leds_interactions']
+        
         self.robot_skills = await self.enable_controller('robot_skills')
-        self.leds = await self.enable_controller('leds')
         self.lidar = await self.enable_controller('lidar')
         self.sensors = await self.enable_controller('sensors')
         self.motion = await self.enable_controller('motion')
         self.sound = await self.enable_controller('sound')
+        if self.leds_interactions:
+            self.leds = await self.enable_controller('leds')
         ## create folder for audio
         self.setup_audio()
         # create_dat_folder(AUDIO_PATH)
@@ -664,31 +672,36 @@ class SkillAttachToCart(RayaSkill):
         except Exception as e:
             self.log.error(f'Failed to setup audio, error: {e}')
 
+
     async def cb_fb_reverse_sound(self,*args):
+        if self.leds_interactions:
             try:
                 await self.leds.animation(
-                                        group = 'head', 
-                                        color = 'RED', 
-                                        animation = 'MOTION_1', 
-                                        speed = 10, 
-                                        repetitions = 1, 
-                                        execution_control = LEDS_EXECUTION_CONTROL.OVERRIDE,
-                                        wait=False)
+                    group = 'head', 
+                    color = 'RED', 
+                    animation = 'MOTION_1', 
+                    speed = 10, 
+                    repetitions = 1, 
+                    execution_control = LEDS_EXECUTION_CONTROL.OVERRIDE,
+                    wait=False
+                )
                 
             except Exception as e:
                 # self.log.warn(f'error in led activation, skip')
                 pass
 
-            if REVERSE_BEEPING_ALERT:
-                try:
-                    if not self.sound.is_playing() and self.motion.is_moving():
-                        await self.play_predefined_sound(SOUND_NAME, volume = SOUND_VOLUME, wait = False) # Can change the volume to a variable taken from self.app.X
-                    elif not self.motion.is_moving():
-                        await self.sound.cancel_sound()
-                    # else == is_moving and is_playing -> then ignore
-                except Exception as e:
-                    self.log.warn(f'error in sound activation, skip {e}')
-                    pass
+        if REVERSE_BEEPING_ALERT:
+            try:
+                if not self.sound.is_playing() and self.motion.is_moving():
+                    await self.play_predefined_sound(SOUND_NAME, volume = SOUND_VOLUME, wait = False) # Can change the volume to a variable taken from self.app.X
+                elif not self.motion.is_moving():
+                    await self.sound.cancel_sound()
+                # else == is_moving and is_playing -> then ignore
+            except Exception as e:
+                self.log.warn(f'error in sound activation, skip {e}')
+                pass
+
+
     async def play_predefined_sound(self,
                                     recording_name,
                                     audio_type = 'mp3',
