@@ -8,7 +8,9 @@ from .constants import *
 
 class SkillDetachFromCart(RayaSkill):
 
-    DEFAULT_SETUP_ARGS = {}
+    DEFAULT_SETUP_ARGS = {
+        'debug_level': DEFAULT_DEBUG_LEVEL
+    }
 
     REQUIRED_SETUP_ARGS = {}
 
@@ -22,7 +24,8 @@ class SkillDetachFromCart(RayaSkill):
 ###############################################################################
 
     async def setup(self):
-        self.log.debug('SkillDetachFromCart.setup')
+        self.debug_level = self.setup_args['debug_level']
+        self.show_debug('SkillDetachFromCart.setup')
         self.robot_skills: RobotSkillsController = \
             await self.enable_controller('robot_skills')
         self.motion: MotionController = \
@@ -30,10 +33,10 @@ class SkillDetachFromCart(RayaSkill):
 
 
     async def main(self):
-        self.log.debug('SkillDetachFromCart.main')
+        self.show_debug('SkillDetachFromCart.main')
 
         for _ in range(self.execute_args['gripper_tries']):
-            self.log.debug('Detaching cart...')
+            self.show_debug('Detaching cart...')
             try:
                 gripper_result = await self.robot_skills.execute_skill(
                     skill='cart_gripper_execute',
@@ -44,16 +47,16 @@ class SkillDetachFromCart(RayaSkill):
                     timeout=GRIPPER_TIMEOUT,
                     wait=True
                 )
-                self.log.debug(f'Gripper result: {gripper_result}')
+                self.show_debug(f'Gripper result: {gripper_result}')
                 if gripper_result[0] == 0:
-                    self.log.debug('Cart detached successfully')
+                    self.show_debug('Cart detached successfully')
                     break
                 else:
-                    self.log.debug('Detach Failed, retrying...')
+                    self.show_debug('Detach Failed, retrying...')
             except Exception as e:
                 self.log.error(f'Error opening gripper: {e}')
 
-        self.log.debug('Moving Forwards...')
+        self.show_debug('Moving Forwards...')
         try:
             await self.motion.set_velocity(
                 x_velocity=VERIFICATION_VELOCITY,
@@ -66,8 +69,13 @@ class SkillDetachFromCart(RayaSkill):
         except RayaMotionException as e:
             self.log.warn(f'Error moving forwards: {type(e)}')
         else:
-            self.log.debug('Moved Forwards')
+            self.show_debug('Moved Forwards')
 
 
     async def finish(self):
-        self.log.debug('SkillDetachFromCart.finish')
+        self.show_debug('SkillDetachFromCart.finish')
+
+
+    def show_debug(self, msg: str = ''):
+        if self.debug_level:
+            self.log.debug(msg)

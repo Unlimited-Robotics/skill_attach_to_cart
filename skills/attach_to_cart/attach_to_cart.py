@@ -27,7 +27,8 @@ class SkillAttachToCart(RayaSkill):
         'actual_desired_position': GRIPPER_ACTUAL_DESIRED_POSITION,
         'reverse_beeping_alert': REVERSE_BEEPING_ALERT,
         'close_pressure': GRIPPER_CLOSE_PRESSURE_CONST,
-        'leds_interactions': DEFAULT_LEDS_INTERACTIONS
+        'leds_interactions': DEFAULT_LEDS_INTERACTIONS,
+        'debug_level': DEFAULT_DEBUG_LEVEL
     }
 
     REQUIRED_SETUP_ARGS = {}
@@ -42,6 +43,7 @@ class SkillAttachToCart(RayaSkill):
 
     async def setup(self):
         self.leds_interactions = self.setup_args['leds_interactions']
+        self.debug_level = self.setup_args['debug_level']
 
         self.robot_skills: RobotSkillsController = \
             await self.enable_controller('robot_skills')
@@ -62,7 +64,7 @@ class SkillAttachToCart(RayaSkill):
 
 
     async def main(self):
-        self.log.info('SkillAttachToCart.main')
+        self.show_debug('SkillAttachToCart.main')
 
         self.start_time = time.time()
         self.timer = self.start_time
@@ -125,23 +127,28 @@ class SkillAttachToCart(RayaSkill):
                 wait=True,
             )
 
-        self.log.info(
+        self.show_debug(
             f'cart attachment status is: {cart_attached}, '
             f'time to execute: {self.timer}'
         )
         await self.send_feedback(cart_attached)
         if self.gripper_state['cart_attached'] is False and \
                 self.error_type is None:
-            self.log.error('Cart is not attached')
+            self.show_debug('Cart is not attached')
             self.error_type = ERROR_CART_NOT_ATTACHED
         if self.error_type != None:
             self.abort(*self.error_type)
-        self.log.info('SkillAttachToCart.finish')
+        self.show_debug('SkillAttachToCart.finish')
 
 
 ###############################################################################
 ########################### Helpers ###########################################
 ###############################################################################
+
+
+    def show_debug(self, msg: str = ''):
+        if self.debug_level:
+            self.log.debug(msg)
 
 
 ###############################################################################
@@ -157,18 +164,18 @@ class SkillAttachToCart(RayaSkill):
         # and self.angle is above rotating..
 
         if (self.state == 'attach_verification'):
-            self.log.debug(f'current state: {self.state}')
+            self.show_debug(f'current state: {self.state}')
             return True
 
         elif (self.state == 'finish'):
-            self.log.debug(f'current state: {self.state}')
+            self.show_debug(f'current state: {self.state}')
             return True
 
         elif ((self.dl < ROTATING_DISTANCE or self.dr < ROTATING_DISTANCE) and
               (self.dl+self.dr)/2 < ROTATING_DISTANCE_AV and
               abs(self.angle) > ROTATING_ANGLE_MIN):
             self.state = 'rotating'
-            self.log.debug(f'current state: {self.state}')
+            self.show_debug(f'current state: {self.state}')
             return True
 
         # If the sensor distance is low then min every thing ok you can close
@@ -180,12 +187,12 @@ class SkillAttachToCart(RayaSkill):
                self.dr < ATACHING_DISTANCE_MAX and
                abs(self.angle) < ATACHING_ANGLE_MAX)):
             self.state = 'attaching'
-            self.log.debug(f'current state: {self.state}')
+            self.show_debug(f'current state: {self.state}')
             return True
 
         else:
             self.state = 'moving'
-            self.log.debug(f'current state: {self.state}')
+            self.show_debug(f'current state: {self.state}')
             return True
 
 
@@ -243,11 +250,11 @@ class SkillAttachToCart(RayaSkill):
         # self.gripper_state['pressure_reached'] = gripper_result['pressure_reached']
         self.gripper_state['success'] = success
         # self.gripper_state['timeout_reached'] = gripper_result['timeout_reached']
-        self.log.debug(f'gripper_state: {self.gripper_state}')
+        self.show_debug(f'gripper_state: {self.gripper_state}')
         # if abs(gripper_result['final_position'] - self.setup_args['actual_desired_position']) < POSITION_ERROR_MARGIN:
         # self.gripper_state['close_to_actual_position'] = True
         # else:
-        # self.log.info(f'Attemps,{self.gripper_state["attempts"]}, final_position {gripper_result["final_position"]}')
+        # self.show_debug(f'Attemps,{self.gripper_state["attempts"]}, final_position {gripper_result["final_position"]}')
 
 
     def _cb_feedback_sound(self, error, error_msg, distance):
@@ -271,7 +278,7 @@ class SkillAttachToCart(RayaSkill):
         upper_distance = min(self.average_distance/100 + 0.2, 0.6)
         self.obstacle_detected = self.lidar.check_obstacle(
             lower_angle=-40, upper_angle=40, upper_distance=upper_distance)
-        self.log.warn(f'self.obstacle_detected {self.obstacle_detected}')
+        self.show_debug(f'self.obstacle_detected {self.obstacle_detected}')
 
 
     async def _avoid_obstacle(self):
@@ -280,10 +287,10 @@ class SkillAttachToCart(RayaSkill):
         # after MAX_OBSTACLE_INDEX times of identification, the function abort the skill
 
         self.obstacle_index = self.obstacle_index + 1
-        self.log.error(
+        self.show_debug(
             f'stop moving, obstacle detected, index: {self.obstacle_index}')
         if self.obstacle_index > MAX_OBSTACLE_INDEX:
-            self.log.error(
+            self.show_debug(
                 f'error, max obstacle index reached: {self.obstacle_index}')
             # if self.sound.is_playing():
             #     self.sound.cancel_sound()
@@ -313,7 +320,7 @@ class SkillAttachToCart(RayaSkill):
                 wait=True,
             )
         except Exception as error:
-            self.log.error(f'linear movement failed, error: {error}')
+            self.show_debug(f'linear movement failed, error: {error}')
             self.error_type = ERROR_LINEAR_MOVEMENT_FAILED
             self.state = 'finish'
 
@@ -325,21 +332,21 @@ class SkillAttachToCart(RayaSkill):
         if abs(self.average_distance - self.last_average_distance) < \
                 PUSHING_IDENTIFIER_DELTA:
             self.pushing_index += 1
-            self.log.warn(
+            self.show_debug(
                 f'cart seems to be pushed by gary, '
                 f'index: {self.pushing_index} '
                 f'av_dis: {self.average_distance}, '
                 f'last av_dis: {self.last_average_distance}'
             )
         if self.pushing_index > MAX_PUSHING_INDEX:
-            self.log.error(f'cart pushed by gary {self.pushing_index} times')
+            self.show_debug(f'cart pushed by gary {self.pushing_index} times')
             self.error_type = ERROR_CART_NOT_GETTING_CLOSER
             self.state = 'finish'
 
 
     async def _cart_max_distance_verification(self):
         if self.dl > CART_MAX_DISTANCE and self.dr > CART_MAX_DISTANCE:
-            self.log.error(
+            self.show_debug(
                 f'cart is too far, distance: '
                 f'left: {self.dl} cm, '
                 f'right: {self.dr}'
@@ -352,7 +359,7 @@ class SkillAttachToCart(RayaSkill):
         index = 0
         while abs(self.angle) > MIN_STARTING_ANGLE and \
                 index < MAX_ANGLE_CORRECTION_ATTEMPTS:
-            self.log.info(f'major angle correction attempt: {index}')
+            self.show_debug(f'major angle correction attempt: {index}')
             await self._timer_update()
             await self._timeout_verification()
             await self._adjust_angle()
@@ -366,7 +373,7 @@ class SkillAttachToCart(RayaSkill):
 
     async def _major_angle_identification(self):
         if abs(self.angle) > MIN_STARTING_ANGLE:
-            self.log.warn(
+            self.show_debug(
                 f'Starting angle too high: {self.angle}, adjust angle'
             )
             await self._major_angle_correction()
@@ -380,11 +387,11 @@ class SkillAttachToCart(RayaSkill):
 
         if (self.state == 'moving' or self.state == 'rotating') and \
                 self.timer > MOVING_BACK_TIMEOUT:
-            self.log.error(f'timeout reached: {self.timer} sec')
+            self.show_debug(f'timeout reached: {self.timer} sec')
             self.error_type = ERROR_TIMEOUT_REACHED
             self.state = 'finish'
         if self.timer > self.timeout:
-            self.log.error(f'full timeout reached: {self.timer} sec')
+            self.show_debug(f'full timeout reached: {self.timer} sec')
             self.error_type = ERROR_TIMEOUT_REACHED
             self.state = 'finish'
 
@@ -403,7 +410,7 @@ class SkillAttachToCart(RayaSkill):
         while (True):
             timer = time.time() - start_time
             if timer > 2.0:
-                self.log.error(f'failed to read SRF values for {timer} sec')
+                self.show_debug(f'failed to read SRF values for {timer} sec')
                 self.error_type = ERROR_SRF_READING_FAILED
                 self.state = 'finish'
             await self.sleep(0.01)
@@ -412,7 +419,7 @@ class SkillAttachToCart(RayaSkill):
             srf_left = self.sensors.get_sensor_value(
                 'srf')[SRF_SENSOR_ID_LEFT]*SRF_M2CM
             if (math.isnan(srf_right) and not math.isnan(srf_left)):
-                self.log.error('nan value recived from srf')
+                self.show_debug('nan value recived from srf')
 
             if (not math.isnan(srf_right) and not math.isnan(srf_left)):
 
@@ -439,7 +446,7 @@ class SkillAttachToCart(RayaSkill):
         self.delta = self.dl - self.dr
         self.angle = math.atan2(
             self.delta, DISTANCE_BETWEEN_SRF_SENSORS)/math.pi * 180
-        self.log.info(
+        self.show_debug(
             f'left:{self.dl}, '
             f'right:{self.dr}, '
             f'avg: {self.average_distance} '
@@ -460,7 +467,7 @@ class SkillAttachToCart(RayaSkill):
 
         kp = VELOCITY_KP
         cmd_velocity = kp*self.average_distance
-        self.log.info(f'cmd_velocity {cmd_velocity}')
+        self.show_debug(f'cmd_velocity {cmd_velocity}')
 
         if abs(cmd_velocity) > MAX_MOVING_VELOCITY:
             cmd_velocity = MAX_MOVING_VELOCITY
@@ -476,7 +483,7 @@ class SkillAttachToCart(RayaSkill):
                     callback_feedback_async=self._cb_fb_reverse_sound
                 )
             except Exception as error:
-                self.log.error(f'linear movement failed, error: {error}')
+                self.show_debug(f'linear movement failed, error: {error}')
                 self.error_type = ERROR_LINEAR_MOVEMENT_FAILED
                 self.state = 'finish'
                 # self.abort(*ERROR_LINEAR_MOVEMENT_FAILED)
@@ -487,7 +494,7 @@ class SkillAttachToCart(RayaSkill):
 
 
     async def _attach(self):
-        self.log.info("stop moving, start attaching")
+        self.show_debug("stop moving, start attaching")
 
         is_moving = self.motion.is_moving()
 
@@ -513,7 +520,7 @@ class SkillAttachToCart(RayaSkill):
                     wait=True,
                 )
 
-                self.log.debug(f'gripper result: {gripper_result}')
+                self.show_debug(f'gripper result: {gripper_result}')
 
                 await self._gripper_feedback_cb(*gripper_result)
                 await self._gripper_state_classifier()
@@ -527,7 +534,7 @@ class SkillAttachToCart(RayaSkill):
                     break
 
                 # if self.gripper_state['position_reached'] == True:
-                #     self.log.warn(f'cart might not be attached')
+                #     self.show_debug(f'cart might not be attached')
                 #     self.state = 'attach_verification'
                 #     break
 
@@ -550,7 +557,7 @@ class SkillAttachToCart(RayaSkill):
             await self.send_feedback({'cart_attached_success': cart_attached})
 
         except Exception as error:
-            self.log.error(
+            self.show_debug(
                 f'gripper fail error is: {error}'
                 f'error type: {type(error)}'
             )
@@ -578,18 +585,18 @@ class SkillAttachToCart(RayaSkill):
                     enable_obstacles=False,
                     wait=True)
             except Exception as error:
-                self.log.error(f'rotation failed, error: {error}')
+                self.show_debug(f'rotation failed, error: {error}')
                 self.error_type = ERROR_ROTATION_MOVEMENT_FAILED
                 self.state = 'finish'
                 # self.abort(*ERROR_ROTATION_MOVEMENT_FAILED)
         else:
             await self._avoid_obstacle()
 
-        self.log.info("finish rotate")
+        self.show_debug("finish rotate")
 
 
     async def _cart_attachment_verification(self):
-        self.log.info('run cart_attachment_verification')
+        self.show_debug('run cart_attachment_verification')
         verification_dl = self.dl
         verification_dr = self.dr
         try:
@@ -614,7 +621,7 @@ class SkillAttachToCart(RayaSkill):
                 await self.sleep(0.2)
 
         except Exception as error:
-            self.log.error(f'linear movement failed, error: {error}')
+            self.show_debug(f'linear movement failed, error: {error}')
             self.error_type = ERROR_LINEAR_MOVEMENT_FAILED
             # self.abort(*ERROR_LINEAR_MOVEMENT_FAILED)
         self.state = 'finish'
@@ -648,10 +655,10 @@ class SkillAttachToCart(RayaSkill):
                 wait=True,
             )
 
-            self.log.debug(f'gripper result: {gripper_result}')
+            self.show_debug(f'gripper result: {gripper_result}')
 
         except Exception as error:
-            self.log.error(
+            self.show_debug(
                 f'gripper open to pre-grab position failed, Exception type: '
                 f'{type(error)}, Exception: {error}')
             self.error_type = ERROR_GRIPPER_FAILED
@@ -669,7 +676,7 @@ class SkillAttachToCart(RayaSkill):
 
 
     async def _rotation_180(self):
-        self.log.info('Rotating 180 degree')
+        self.show_debug('Rotating 180 degree')
         try:
             await self.motion.rotate(
                 angle=180.0,
@@ -679,7 +686,7 @@ class SkillAttachToCart(RayaSkill):
             )
 
         except Exception as error:
-            self.log.error(f'180 rotation failed, error: {error}')
+            self.show_debug(f'180 rotation failed, error: {error}')
             self.error_type = ERROR_ROTATION_MOVEMENT_FAILED
             self.state = 'finish'
             # self.abort(*ERROR_ROTATION_MOVEMENT_FAILED)
@@ -733,18 +740,18 @@ class SkillAttachToCart(RayaSkill):
 
             for f in files_lst:
                 path_tmp = f'{AUDIO_PATH}/{f}'
-                self.log.debug(f'Resolving: {path_tmp}')
+                self.show_debug(f'Resolving: {path_tmp}')
                 if not check_file_exists(path_tmp):
-                    self.log.info(f'Resolving file: {f}')
+                    self.show_debug(f'Resolving file: {f}')
                     shutil.copyfile(os.path.join(
                         LOCAL_AUDIO_PATH, f), resolve_path(path_tmp))
                 else:
-                    self.log.info(f'File: {f}, already exists, skipping...')
+                    self.show_debug(f'File: {f}, already exists, skipping...')
 
-            self.log.info('Finished audio setup')
+            self.show_debug('Finished audio setup')
 
         except Exception as e:
-            self.log.error(f'Failed to setup audio, error: {e}')
+            self.show_debug(f'Failed to setup audio, error: {e}')
 
 
     async def _cb_fb_reverse_sound(self, *args):
@@ -761,7 +768,7 @@ class SkillAttachToCart(RayaSkill):
                 )
 
             except Exception as e:
-                # self.log.warn(f'error in led activation, skip')
+                # self.show_debug(f'error in led activation, skip')
                 pass
 
         if REVERSE_BEEPING_ALERT:
@@ -777,7 +784,7 @@ class SkillAttachToCart(RayaSkill):
                     await self.sound.cancel_sound()
                 # else == is_moving and is_playing -> then ignore
             except Exception as e:
-                self.log.warn(f'error in sound activation, skip {e}')
+                self.show_debug(f'error in sound activation, skip {e}')
                 pass
 
 
@@ -811,7 +818,7 @@ class SkillAttachToCart(RayaSkill):
             )
 
         except Exception as e:
-            self.log.warn(f'Skipped playing sound, got error: {e}')
+            self.show_debug(f'Skipped playing sound, got error: {e}')
 
 
 ###############################################################################
