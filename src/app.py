@@ -11,16 +11,18 @@ class RayaApplication(RayaApplicationBase):
         if self.mode == 'attach':
             self.skill_att2cart = self.register_skill(SkillAttachToCart)
             await self.skill_att2cart.execute_setup(
-                    setup_args={'reverse_beeping_alert': False},
-                )
+                setup_args={
+                    'reverse_beeping_alert': False
+                },
+            )
         elif self.mode == 'deattach':
             self.skill_deatt2cart = self.register_skill(SkillDetachFromCart)
             await self.skill_deatt2cart.execute_setup(
-                    setup_args={},
-                )
+                setup_args={},
+            )
         self.log.info(f'Skill {self.mode} registered')
-        
-        
+
+
     async def cb_skill_done(self, exception, result):
         self.log.info(f'cb_skill_done, cart {self.mode}, result: {result}')
         if exception is None:
@@ -28,11 +30,11 @@ class RayaApplication(RayaApplicationBase):
                 await self.skill_att2cart.execute_finish()
             elif self.mode == 'deattach':
                 await self.skill_deatt2cart.execute_finish()
-        else: 
+        else:
             self.log.warn(
-                    f'error occured while {self.mode}ing, exception type: '
-                    f'{type(exception)} {exception}'
-                )
+                f'error occured while {self.mode}ing, exception type: '
+                f'{type(exception)} {exception}'
+            )
 
 
     async def cb_skill_feedback(self, feedback):
@@ -40,24 +42,24 @@ class RayaApplication(RayaApplicationBase):
 
 
     def get_arguments(self):
-        self.mode = self.get_argument('-m', '--mode',
-                type=str,
-                help='Run mode, attach or dettach',
-                required=True
-            )
+        self.mode = self.get_argument(
+            '-m', '--mode',
+            type=str,
+            help='Run mode, attach or dettach',
+            required=True
+        )
         if self.mode not in ['attach', 'deattach']:
-            raise ValueError("Mode should be attach or dettach"
-                        )
+            raise ValueError('Mode should be attach or dettach')
 
 
     async def main(self):
         if self.mode == 'attach':
             await self.skill_att2cart.execute_main(
-                    wait=True
+                wait=True
             )
         elif self.mode == 'deattach':
             await self.skill_deatt2cart.execute_main(
-                    wait=True
+                wait=True
             )
 
 
