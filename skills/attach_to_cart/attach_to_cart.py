@@ -28,9 +28,7 @@ class SkillAttachToCart(RayaSkill):
     
     REQUIRED_SETUP_ARGS = {}
     
-    DEFAULT_EXEC_ARGS = {}
-    
-    REQUIRED_EXEC_ARGS = {}
+    DEFAULT_EXECUTE_ARGS = {}
 
     
 ###############################################################################

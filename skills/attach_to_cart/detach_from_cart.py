@@ -13,11 +13,10 @@ class SkillDetachFromCart(RayaSkill):
     
     REQUIRED_SETUP_ARGS = {}
     
-    DEFAULT_EXEC_ARGS = {
+    DEFAULT_EXECUTE_ARGS = {
         'gripper_tries': 3,
     }
-    
-    REQUIRED_EXEC_ARGS = {}
+
     
 ###############################################################################
 ##################### setup - main - finish ###################################
