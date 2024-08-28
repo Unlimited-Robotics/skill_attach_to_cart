@@ -1,8 +1,8 @@
-import time
-
 from raya.skills import RayaSkill
 from raya.controllers.robot_skills_controller import RobotSkillsController
 from raya.controllers.motion_controller import MotionController
+
+from raya.exceptions import RayaMotionException
 
 from .constants import *
 
@@ -12,6 +12,12 @@ class SkillDetachFromCart(RayaSkill):
     DEFAULT_SETUP_ARGS = {}
     
     REQUIRED_SETUP_ARGS = {}
+    
+    DEFAULT_EXEC_ARGS = {
+        'gripper_tries': 3,
+    }
+    
+    REQUIRED_EXEC_ARGS = {}
     
 ###############################################################################
 ##################### setup - main - finish ###################################
@@ -28,69 +34,41 @@ class SkillDetachFromCart(RayaSkill):
     async def main(self):
         self.log.debug('SkillDetachFromCart.main')
         
-        self.log.debug('Opening gripper...')
-        self.gripper_running = True
-        await self.robot_skills.execute_skill(
-            skill='cart_gripper_execute',
-            hand='cart',
-            goal= GRIPPER_CLOSE_POSITION,
-            velocity=GRIPPER_VELOCITY,
-            pressure= GRIPPER_OPEN_PRESSURE_CONST,
-            timeout=GRIPPER_TIMEOUT,
-            wait=False,
-            callback_feedback_async=None,
-            callback_finish_async=self.__cb_gripper_finish
-        )
-        while self.gripper_running:
-            await self.sleep(1.0)
+        for _ in range(self.execute_args['gripper_tries']):
+            self.log.debug('Detaching cart...')
+            try:
+                gripper_result = await self.robot_skills.execute_skill(
+                    skill='cart_gripper_execute',
+                    hand='cart',
+                    goal= GRIPPER_CLOSE_POSITION,
+                    velocity=GRIPPER_VELOCITY,
+                    pressure= GRIPPER_OPEN_PRESSURE_CONST,
+                    timeout=GRIPPER_TIMEOUT,
+                    wait=True
+                )
+                self.log.debug(f'Gripper result: {gripper_result}')
+                if gripper_result[0] == 0:
+                    self.log.debug('Cart detached successfully')
+                else:                    
+                    self.log.debug('Detach Failed, retrying...')
+            except Exception as e:
+                self.log.error(f'Error opening gripper: {e}')
         
         self.log.debug('Moving Forwards...')
-        self.running_motion = True
-        await self.motion.set_velocity(
-            x_velocity = VERIFICATION_VELOCITY,
-            y_velocity = 0.0,
-            angular_velocity = 0.0,
-            duration = DURATION_DETTACHING,
-            enable_obstacles = True,
-            wait = False,
-            callback_feedback_async = None,
-            callback_finish_async = self._cb_motion_finish
-        )
-        
-        while self.running_motion:
-            await self.sleep(1.0)
+        try:
+            await self.motion.set_velocity(
+                x_velocity = VERIFICATION_VELOCITY,
+                y_velocity = 0.0,
+                angular_velocity = 0.0,
+                duration = DURATION_DETTACHING,
+                enable_obstacles = True,
+                wait = True
+            )
+        except RayaMotionException as e:
+            self.log.debug(f'Error moving forwards: {type(e)}')
+        else:
+            self.log.debug('Moved Forwards')
 
 
     async def finish(self):
         self.log.debug('SkillDetachFromCart.finish')
-
-
-###############################################################################
-##################### CALLBACKS ###############################################
-###############################################################################
-
-    async def __cb_gripper_finish(self, 
-            success,
-            result_code,
-            result_str,
-            final_position,
-            final_pressure
-        ):
-        self.log.debug('---------------------------------')
-        self.log.debug(f'__cb_gripper_finish:')
-        self.log.debug(f'success: {success}')
-        self.log.debug(f'result_code: {result_code}')
-        self.log.debug(f'result_str: {result_str}')
-        self.log.debug(f'final_position: {final_position}')
-        self.log.debug(f'final_pressure: {final_pressure}')
-        self.log.debug('---------------------------------')
-        self.gripper_running = False
-
-        
-    async def _cb_motion_finish(self, code, result):
-        self.log.debug('---------------------------------')
-        self.log.debug('_cb_motion_finish:')
-        self.log.debug(f'code {code}, finish: {result}')
-        self.log.debug('---------------------------------')
-        self.running_motion = False
-        
