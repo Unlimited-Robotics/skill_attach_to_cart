@@ -15,7 +15,7 @@ class RayaApplication(RayaApplicationBase):
                     'reverse_beeping_alert': False
                 },
             )
-        elif self.mode == 'deattach':
+        elif self.mode == 'detach':
             self.skill_deatt2cart = self.register_skill(SkillDetachFromCart)
             await self.skill_deatt2cart.execute_setup(
                 setup_args={},
@@ -28,7 +28,7 @@ class RayaApplication(RayaApplicationBase):
         if exception is None:
             if self.mode == 'attach':
                 await self.skill_att2cart.execute_finish()
-            elif self.mode == 'deattach':
+            elif self.mode == 'detach':
                 await self.skill_deatt2cart.execute_finish()
         else:
             self.log.warn(
@@ -45,11 +45,11 @@ class RayaApplication(RayaApplicationBase):
         self.mode = self.get_argument(
             '-m', '--mode',
             type=str,
-            help='Run mode, attach or dettach',
+            help='Run mode, attach or detach',
             required=True
         )
-        if self.mode not in ['attach', 'deattach']:
-            raise ValueError('Mode should be attach or dettach')
+        if self.mode not in ['attach', 'detach']:
+            raise ValueError('Mode should be attach or detach')
 
 
     async def main(self):
@@ -57,7 +57,7 @@ class RayaApplication(RayaApplicationBase):
             await self.skill_att2cart.execute_main(
                 wait=True
             )
-        elif self.mode == 'deattach':
+        elif self.mode == 'detach':
             await self.skill_deatt2cart.execute_main(
                 wait=True
             )
