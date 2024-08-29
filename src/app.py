@@ -39,6 +39,7 @@ class RayaApplication(RayaApplicationBase):
 
     async def cb_skill_feedback(self, feedback):
         self.log.info(feedback)
+    
 
 
     def get_arguments(self):
@@ -64,4 +65,9 @@ class RayaApplication(RayaApplicationBase):
 
 
     async def finish(self):
+        if self.mode == 'attach':
+                await self.skill_att2cart.execute_finish()
+        elif self.mode == 'detach':
+            await self.skill_deatt2cart.execute_finish()
         self.log.info(f'RayaApplication.finish')
+        

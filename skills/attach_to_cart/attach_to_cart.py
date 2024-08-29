@@ -77,7 +77,7 @@ class SkillAttachToCart(RayaSkill):
             await self._timeout_verification()
 
             # Read the srf values and update them
-            await self._read_srf_values()
+            await self.__read_srf_values()
             await self._calculate_distance_parameters()
             await self._cart_max_distance_verification()
             # await self.lidar_obstacle_detection()
@@ -299,7 +299,7 @@ class SkillAttachToCart(RayaSkill):
 
     async def _pushing_cart_identifier(self):
         self.last_average_distance = self.average_distance
-        await self._read_srf_values()
+        await self.__read_srf_values()
 
         if abs(self.average_distance - self.last_average_distance) < \
                 PUSHING_IDENTIFIER_DELTA:
@@ -335,7 +335,7 @@ class SkillAttachToCart(RayaSkill):
             await self._timer_update()
             await self._timeout_verification()
             await self._adjust_angle()
-            await self._read_srf_values()
+            await self.__read_srf_values()
             await self._calculate_distance_parameters()
             await self._cart_max_distance_verification()
             index += 1
@@ -377,7 +377,7 @@ class SkillAttachToCart(RayaSkill):
 ###############################################################################
 
 
-    async def _read_srf_values(self):
+    async def __read_srf_values(self):
         start_time = time.time()
         while (True):
             timer = time.time() - start_time
@@ -575,11 +575,11 @@ class SkillAttachToCart(RayaSkill):
             )
 
             while (self.motion.is_moving()):
-                await self._read_srf_values()
+                await self.__read_srf_values()
                 dl_delta = abs(verification_dl - self.dl)
                 dr_delta = abs(verification_dr - self.dr)
-                if dl_delta < VERIFICATION_DISTANCE or dr_delta < \
-                        VERIFICATION_DISTANCE:
+                if dl_delta < ATTACH_VERIFICATION_DISTANCE or dr_delta < \
+                        ATTACH_VERIFICATION_DISTANCE:
                     self.gripper_state['cart_attached'] = True
                 else:
                     self.gripper_state['cart_attached'] = False
@@ -610,14 +610,10 @@ class SkillAttachToCart(RayaSkill):
         self.pre_loop_finish = True
         try:
             gripper_result = await self.robot_skills.execute_skill(
-                skill='cart_gripper_execute',
-                hand='cart',
-                goal=GRIPPER_CLOSE_POSITION,
-                velocity=GRIPPER_VELOCITY,
-                pressure=GRIPPER_OPEN_PRESSURE_CONST,
-                timeout=GRIPPER_TIMEOUT,
-                wait=True,
-            )
+                                skill='cart_gripper_calibrate',
+                                    hand='cart',
+                                wait=True,  
+                            )
 
             self.show_debug(f'gripper result: {gripper_result}')
 
@@ -630,7 +626,7 @@ class SkillAttachToCart(RayaSkill):
 
         if self.rotating_180:
             await self._rotation_180()
-        await self._read_srf_values()
+        await self.__read_srf_values()
         await self._calculate_distance_parameters()
         await self._cart_max_distance_verification()
         await self._major_angle_identification()
